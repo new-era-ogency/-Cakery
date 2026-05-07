@@ -7,7 +7,6 @@ import type { Lang, Messages } from "@/lib/i18n";
 import {
   HONEYPOT_MIN_FILL_MS,
   MAX_FILE_BYTES,
-  ORDER_ENDPOINT,
   PHONE_DISPLAY,
 } from "@/lib/constants";
 import {
@@ -19,6 +18,9 @@ import {
 import { sanitisePhone, sanitiseText } from "@/lib/sanitize";
 import { Step1, Step2, Step3, Step4, Step5, Step6 } from "./order/Steps";
 import { checkImageMagic, reencodeImage } from "./order/image-magic";
+
+/** Relative path only — must not include protocol or host (CSP + same-origin). */
+const API_URL = "/api/order" as const;
 
 const TOTAL_STEPS = 6;
 
@@ -212,9 +214,8 @@ export default function CakeConstructor({
         _meta_honeypot_filled: honeypotFilled ? "yes" : "no",
       };
 
-      const headers: HeadersInit = {
-        Accept: "application/json",
-      };
+      /** Do not set Content-Type on multipart — browser must add the boundary. */
+      const acceptJsonHeaders = { Accept: "application/json" } as const;
 
       let res: Response;
       if (file) {
@@ -223,36 +224,65 @@ export default function CakeConstructor({
           fd.append(k, v);
         }
         fd.append("photo", file);
-        res = await fetch(ORDER_ENDPOINT, {
+        res = await fetch(API_URL, {
           method: "POST",
           body: fd,
           credentials: "same-origin",
           cache: "no-store",
           referrerPolicy: "same-origin",
-          headers,
+          headers: acceptJsonHeaders,
         });
       } else {
-        res = await fetch(ORDER_ENDPOINT, {
+        res = await fetch(API_URL, {
           method: "POST",
           body: JSON.stringify(payload),
           credentials: "same-origin",
           cache: "no-store",
           referrerPolicy: "same-origin",
           headers: {
-            ...headers,
-            "Content-Type": "application/json; charset=utf-8",
+            ...acceptJsonHeaders,
+            "Content-Type": "application/json",
           },
         });
+      }
+
+      if (!res.ok) {
+        let errData: unknown;
+        try {
+          errData = await res.json();
+        } catch {
+          errData = {
+            _debug: "Response body was not JSON",
+            status: res.status,
+            statusText: res.statusText,
+          };
+        }
+        alert(JSON.stringify(errData));
+        setGlobalError(`${t.errorText} (HTTP ${res.status}).`);
+        setStatus("idle");
+        return;
       }
 
       let body: ApiResponse | null = null;
       try {
         body = (await res.json()) as ApiResponse;
       } catch {
+        alert(
+          JSON.stringify({
+            _debug: "Success status but JSON parse failed",
+            status: res.status,
+          }),
+        );
         body = null;
       }
 
-      if (res.ok && body && "ok" in body && body.ok === true) {
+      if (!body) {
+        setGlobalError(t.errorText);
+        setStatus("idle");
+        return;
+      }
+
+      if (body && "ok" in body && body.ok === true) {
         setStatus("success");
         return;
       }
