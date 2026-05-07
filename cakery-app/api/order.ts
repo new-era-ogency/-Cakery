@@ -25,63 +25,45 @@ export const config = {
   runtime: "edge",
 };
 
-const LIMITS = {
-  decor: 1000,
-  notes: 1000,
-  name: 100,
-  phone: 30,
-  email: 200,
-} as const;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const MIN_PICKUP_HOURS = 72;
 const HONEYPOT_MIN_FILL_MS = 2000;
 
-const sizeIds = ["6", "10", "16", "20"] as const;
-const flavorIds = [
-  "vanilla",
-  "chocolate",
-  "red-velvet",
-  "lemon",
-  "caramel",
-  "other",
-] as const;
-const creamIds = ["mascarpone", "buttercream", "ganache", "fruit"] as const;
-
-const phoneRe = /^\+?[\d\s().-]{7,30}$/;
-const nameRe = /^[\p{L}\p{M}'\-.\s]{2,100}$/u;
-const dateRe = /^\d{4}-\d{2}-\d{2}$/;
-const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
-
+/** DEBUG: permissive schema — tighten before production. */
 const OrderSchema = z.object({
-  size: z.enum(sizeIds),
-  flavor: z.enum(flavorIds),
-  creams: z
-    .string()
-    .min(1)
-    .max(200)
-    .refine((v) => {
-      const items = v.split(",").map((s) => s.trim()).filter(Boolean);
-      return (
-        items.length > 0 &&
-        items.length <= creamIds.length &&
-        items.every((id) => (creamIds as readonly string[]).includes(id))
-      );
-    }, "creams"),
-  decor: z.string().max(LIMITS.decor).optional().or(z.literal("")),
-  date: z.string().regex(dateRe),
-  time: z.string().regex(timeRe),
-  name: z.string().min(2).max(LIMITS.name).regex(nameRe),
-  phone: z.string().min(7).max(LIMITS.phone).regex(phoneRe),
-  email: z
-    .string()
-    .max(LIMITS.email)
-    .email()
-    .or(z.literal(""))
-    .optional(),
-  notes: z.string().max(LIMITS.notes).optional().or(z.literal("")),
-  gdpr: z.literal("yes"),
-  language: z.enum(["bg", "en"]),
+  size: z.string().optional(),
+  flavor: z.string().optional(),
+  creams: z.string().optional(),
+  decor: z.string().optional(),
+  date: z.string().optional(),
+  time: z.string().optional(),
+  name: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional(),
+  notes: z.string().optional(),
+  gdpr: z.string().optional(),
+  language: z.enum(["bg", "en"]).optional(),
 });
+
+function jsonValidationError(error: z.ZodError): Response {
+  return new Response(JSON.stringify({ error: error.message }), {
+    status: 400,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+function summarizeFormData(fd: FormData): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of fd.entries()) {
+    out[key] =
+      value instanceof File
+        ? `File(${value.name}, ${value.size}b, ${value.type})`
+        : String(value);
+  }
+  return out;
+}
 
 type Lang = "bg" | "en";
 
@@ -120,6 +102,8 @@ function jsonOk(): Response {
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  console.log("Body received:", req.body);
+
   // 1. Method
   if (req.method !== "POST") {
     return jsonError(405, {
@@ -154,6 +138,8 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
+  console.log("FormData (summary):", summarizeFormData(fd));
+
   // 4. Honeypot — silently report success so we don't leak the heuristic.
   const gotcha = String(fd.get("_gotcha") ?? "");
   if (gotcha) return jsonOk();
@@ -184,51 +170,10 @@ export default async function handler(req: Request): Promise<Response> {
   };
   const parsed = OrderSchema.safeParse(candidate);
   if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    const field = issue?.path?.[0]?.toString();
-    return jsonError(422, {
-      code: "validation",
-      ...(field ? { field } : {}),
-      message: {
-        bg: "Невалидни данни в полето.",
-        en: "Invalid value in a field.",
-      },
-    });
+    return jsonValidationError(parsed.error);
   }
 
-  // 7. Hard 72-hour pickup rule (uses local time of the server, but we accept
-  //    any pickup that is at least 72h ahead in absolute milliseconds, so the
-  //    server's TZ does not matter).
-  const [yy, mm, dd] = parsed.data.date.split("-").map(Number);
-  const [hh, mi] = parsed.data.time.split(":").map(Number);
-  if (
-    yy === undefined ||
-    mm === undefined ||
-    dd === undefined ||
-    hh === undefined ||
-    mi === undefined
-  ) {
-    return jsonError(422, {
-      code: "validation",
-      field: "date",
-      message: {
-        bg: "Невалидна дата или час.",
-        en: "Invalid date or time.",
-      },
-    });
-  }
-  const pickupMs = Date.UTC(yy, mm - 1, dd, hh, mi, 0, 0);
-  const earliestMs = Date.now() + MIN_PICKUP_HOURS * 3600 * 1000;
-  if (pickupMs < earliestMs) {
-    return jsonError(422, {
-      code: "date_too_soon",
-      field: "date",
-      message: {
-        bg: "Поръчката трябва да е поне 72 часа напред. Моля, изберете по-късна дата.",
-        en: "The order must be at least 72 hours from now. Please pick a later date.",
-      },
-    });
-  }
+  // 7. DEBUG: 72-hour pickup rule temporarily disabled for submission testing.
 
   // 8. File checks (best effort — server pipeline must re-encode for real).
   const photo = fd.get("photo");

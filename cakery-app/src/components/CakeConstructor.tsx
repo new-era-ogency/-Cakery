@@ -27,6 +27,8 @@ type Status = "idle" | "submitting" | "success" | "error";
 /** Shape of the JSON envelope returned by `/api/order`. */
 type ApiResponse =
   | { ok: true }
+  /** DEBUG: Zod validation failures return `{ error: message }` with HTTP 400. */
+  | { error: string }
   | {
       ok: false;
       code:
@@ -235,13 +237,30 @@ export default function CakeConstructor({
         body = null;
       }
 
-      if (res.ok && body && body.ok) {
+      // DEBUG / Zod: server returns `{ error: error.message }` at 400
+      if (
+        body &&
+        "error" in body &&
+        typeof (body as { error?: unknown }).error === "string"
+      ) {
+        setGlobalError((body as { error: string }).error);
+        setStatus("idle");
+        return;
+      }
+
+      if (res.ok && body && "ok" in body && body.ok === true) {
         setStatus("success");
         return;
       }
 
       // Surface server-side validation feedback in the user's language.
-      if (body && body.ok === false) {
+      if (
+        body &&
+        "ok" in body &&
+        body.ok === false &&
+        "code" in body &&
+        "message" in body
+      ) {
         if (body.code === "not_configured") {
           setGlobalError(`${t.formNotConfigured} ${PHONE_DISPLAY}.`);
           setStatus("error");
