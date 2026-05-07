@@ -131,5 +131,13 @@ export const STEP_FIELDS: Array<Array<keyof OrderFormData>> = [
 // protecting against step-bypass via dev-tools / state mutation.
 export function buildFullSchema(t: Messages) {
   const steps = buildSchemas(t);
-  return steps.reduce((acc, s) => acc.merge(s as any), z.object({}) as any);
+  const merged = steps.reduce(
+    (acc, s) => acc.merge(s as z.AnyZodObject),
+    z.object({}),
+  );
+  return merged.merge(
+    z.object({
+      _gotcha: z.string().max(200).optional().default(""),
+    }),
+  );
 }

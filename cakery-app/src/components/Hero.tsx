@@ -11,17 +11,23 @@ export default function Hero({ t }: { t: Messages }) {
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    if (reduced) return;
+    if (typeof window === "undefined" || reduced) return;
+
     const onScroll = () => {
-      if (!imgRef.current) return;
+      const el = imgRef.current;
+      if (!el) return;
       const y = Math.min(window.scrollY, 400);
-      imgRef.current.style.transform = `translate3d(0, ${y * 0.12}px, 0) scale(${
+      el.style.transform = `translate3d(0, ${y * 0.12}px, 0) scale(${
         1 + y * 0.0004
       })`;
     };
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    const rafId = window.requestAnimationFrame(onScroll);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [reduced]);
 
   return (

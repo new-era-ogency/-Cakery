@@ -17,7 +17,7 @@ import { COPY } from "./lib/i18n";
 export default function App() {
   const { lang, setLang } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const t = COPY[lang];
+  const t = lang === "en" ? COPY.en : COPY.bg;
 
   useReveal();
 

@@ -1,5 +1,9 @@
 import { Upload } from "lucide-react";
-import type { UseFormRegister, FieldErrors, UseFormWatch } from "react-hook-form";
+import {
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormWatch,
+} from "react-hook-form";
 import type { Messages } from "@/lib/i18n";
 import { LIMITS } from "@/lib/constants";
 import type { OrderFormData } from "@/lib/validation";
@@ -9,6 +13,14 @@ type StepProps = {
   register: UseFormRegister<OrderFormData>;
   errors: FieldErrors<OrderFormData>;
   watch: UseFormWatch<OrderFormData>;
+};
+
+/** Steps 1–2: `updateFormData` centralises setValue + clearErrors for card picks. */
+type StepChoiceProps = {
+  t: Messages;
+  errors: FieldErrors<OrderFormData>;
+  watch: UseFormWatch<OrderFormData>;
+  updateFormData: (field: "size" | "flavor", value: string) => void;
 };
 
 function Field({
@@ -45,36 +57,49 @@ function Field({
   );
 }
 
-export function Step1({ t, register, errors, watch }: StepProps) {
-  const value = watch("size");
+export function Step1({ t, errors, watch, updateFormData }: StepChoiceProps) {
+  const sizeValue = watch("size");
   return (
     <div>
-      <h3 className="font-display text-xl font-bold text-espresso">{t.s1Title}</h3>
+      <h3
+        id="step-order-size"
+        className="font-display text-xl font-bold text-espresso"
+      >
+        {t.s1Title}
+      </h3>
       <p className="mt-1 text-sm text-espresso/60">{t.s1Sub}</p>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {t.sizeOptions.map((opt) => (
-          <label
-            key={opt.id}
-            className={`relative flex cursor-pointer flex-col rounded-xl border-2 p-4 transition ${
-              value === opt.id
-                ? "border-caramel bg-caramel/10"
-                : "border-espresso/15 hover:border-caramel/60"
-            }`}
-          >
-            <input
-              type="radio"
-              value={opt.id}
-              {...register("size")}
-              className="sr-only"
-            />
-            <span className="font-display text-lg font-semibold text-espresso">
-              {opt.label}
-            </span>
-            <span className="mt-1 text-sm text-espresso/60">
-              {t.fromShort} {opt.priceFrom} {t.currency}
-            </span>
-          </label>
-        ))}
+      <div
+        role="radiogroup"
+        aria-labelledby="step-order-size"
+        className="mt-5 grid gap-3 sm:grid-cols-2"
+      >
+        {t.sizeOptions.map((opt) => {
+          const selected = sizeValue === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => {
+                if (!opt?.id) return;
+                updateFormData("size", opt.id);
+              }}
+              className={`relative flex cursor-pointer flex-col rounded-xl border-2 p-4 text-left transition ${
+                selected
+                  ? "border-caramel bg-caramel/10"
+                  : "border-espresso/15 hover:border-caramel/60"
+              }`}
+            >
+              <span className="font-display text-lg font-semibold text-espresso">
+                {opt.label}
+              </span>
+              <span className="mt-1 text-sm text-espresso/60">
+                {t.fromShort} {opt.priceFrom} {t.currency}
+              </span>
+            </button>
+          );
+        })}
       </div>
       {errors.size?.message && (
         <p className="mt-2 text-xs font-medium text-red-700" role="alert">
@@ -85,30 +110,51 @@ export function Step1({ t, register, errors, watch }: StepProps) {
   );
 }
 
-export function Step2({ t, register, errors, watch }: StepProps) {
-  const value = watch("flavor");
+export function Step2({ t, errors, watch, updateFormData }: StepChoiceProps) {
+  const flavorValue = watch("flavor");
   return (
     <div>
-      <h3 className="font-display text-xl font-bold text-espresso">{t.s2Title}</h3>
-      <div className="mt-5 grid gap-2 sm:grid-cols-2">
-        {t.flavorOptions.map((opt) => (
-          <label
-            key={opt.id}
-            className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 transition ${
-              value === opt.id
-                ? "border-caramel bg-caramel/10"
-                : "border-espresso/15 hover:border-caramel/60"
-            }`}
-          >
-            <input
-              type="radio"
-              value={opt.id}
-              {...register("flavor")}
-              className="h-4 w-4 accent-espresso"
-            />
-            <span className="text-sm font-medium text-espresso">{opt.label}</span>
-          </label>
-        ))}
+      <h3
+        id="step-order-flavor"
+        className="font-display text-xl font-bold text-espresso"
+      >
+        {t.s2Title}
+      </h3>
+      <div
+        role="radiogroup"
+        aria-labelledby="step-order-flavor"
+        className="mt-5 grid gap-2 sm:grid-cols-2"
+      >
+        {t.flavorOptions.map((opt) => {
+          const selected = flavorValue === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => {
+                if (!opt?.id) return;
+                updateFormData("flavor", opt.id);
+              }}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${
+                selected
+                  ? "border-caramel bg-caramel/10"
+                  : "border-espresso/15 hover:border-caramel/60"
+              }`}
+            >
+              <span
+                className="inline-flex h-4 w-4 shrink-0 rounded-full border-2 border-espresso/25"
+                aria-hidden
+              >
+                {selected ? (
+                  <span className="m-0.5 block h-2.5 w-2.5 rounded-full bg-caramel" />
+                ) : null}
+              </span>
+              <span className="text-sm font-medium text-espresso">{opt.label}</span>
+            </button>
+          );
+        })}
       </div>
       {errors.flavor?.message && (
         <p className="mt-2 text-xs font-medium text-red-700" role="alert">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
@@ -10,6 +10,7 @@ import {
   PHONE_DISPLAY,
 } from "@/lib/constants";
 import {
+  buildFullSchema,
   buildSchemas,
   minPickupISO,
   STEP_FIELDS,
@@ -25,6 +26,21 @@ const API_URL = "/api/order" as const;
 const TOTAL_STEPS = 6;
 
 type Status = "idle" | "submitting" | "success" | "error";
+
+const ORDER_FORM_DEFAULTS = {
+  size: "",
+  flavor: "",
+  creams: [] as string[],
+  decor: "",
+  date: "",
+  time: "",
+  name: "",
+  phone: "",
+  email: "",
+  notes: "",
+  gdpr: false,
+  _gotcha: "",
+} satisfies OrderFormData;
 
 /** Shape of the JSON envelope returned by `/api/order`. */
 type ApiResponse =
@@ -60,36 +76,42 @@ export default function CakeConstructor({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const schemas = useMemo(() => buildSchemas(t), [t]);
-  const currentSchema = schemas[step];
+  const fullSchema = useMemo(() => buildFullSchema(t), [t]);
+
+  const resolver = useMemo(
+    () => zodResolver(fullSchema),
+    [fullSchema],
+  );
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    trigger,
     reset,
     watch,
     setValue,
+    clearErrors,
+    setError,
+    getValues,
   } = useForm<OrderFormData>({
-    mode: "onBlur",
-    defaultValues: {
-      size: "",
-      flavor: "",
-      creams: [],
-      decor: "",
-      date: "",
-      time: "",
-      name: "",
-      phone: "",
-      email: "",
-      notes: "",
-      gdpr: false,
-      _gotcha: "",
-    },
-    // Validate only the fields of the current step at the field level. The
-    // final submit additionally re-validates against the *full* schema.
-    resolver: zodResolver(currentSchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    defaultValues: ORDER_FORM_DEFAULTS,
+    resolver,
   });
+
+  const updateFormData = useCallback(
+    (field: "size" | "flavor", value: string) => {
+      if (!value) return;
+      setValue(field, value, {
+        shouldValidate: false,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      clearErrors(field);
+    },
+    [setValue, clearErrors],
+  );
 
   const minDate = useMemo(() => minPickupISO(), []);
 
@@ -154,9 +176,23 @@ export default function CakeConstructor({
   };
 
   const next = async () => {
+    setGlobalError(null);
     const fields = STEP_FIELDS[step] ?? [];
-    const ok = await trigger(fields);
-    if (ok) setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+    const raw = getValues();
+    const parsed = schemas[step]!.safeParse(raw);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const key = issue?.path?.[0];
+      if (typeof key === "string") {
+        const k = key as keyof OrderFormData;
+        setError(k, { type: issue.code, message: issue.message });
+      }
+      setGlobalError(issue?.message ?? t.invalid);
+      return;
+    }
+
+    clearErrors(fields);
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
   };
 
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -164,29 +200,29 @@ export default function CakeConstructor({
   const onSubmit = async (raw: OrderFormData) => {
     setGlobalError(null);
 
-    // 1. Re-validate ALL steps against current data — defence against bypass.
     for (let i = 0; i < schemas.length; i += 1) {
       const result = schemas[i]!.safeParse(raw);
       if (!result.success) {
-        setStep(i);
         const issue = result.error.issues[0];
+        setStep(i);
         setGlobalError(issue?.message || t.invalid);
         return;
       }
     }
 
-    // 2. Hard GDPR guard
     if (raw.gdpr !== true) {
       setStep(5);
       setGlobalError(t.required);
       return;
     }
 
-    // 3. Build anti-spam metadata. We deliberately do NOT silent-block on the
-    //    client (would create false positives + leak the heuristic to bots).
-    //    The server-side /api/order route inspects these fields:
-    //      - `_gotcha`: honeypot text — silent success if filled.
-    //      - `_meta_age_ms`: time since form mount, server rejects <2s.
+    const merged = fullSchema.safeParse(raw);
+    if (!merged.success) {
+      const issue = merged.error.issues[0];
+      setGlobalError(issue?.message ?? t.invalid);
+      return;
+    }
+
     const ageMs = Date.now() - formMountedAtRef.current;
     const tooFast = ageMs < HONEYPOT_MIN_FILL_MS;
     const honeypotFilled = Boolean(raw._gotcha);
@@ -247,18 +283,24 @@ export default function CakeConstructor({
       }
 
       if (!res.ok) {
-        let errData: unknown;
+        let userMsg = `${t.errorText} (HTTP ${res.status}).`;
         try {
-          errData = await res.json();
-        } catch {
-          errData = {
-            _debug: "Response body was not JSON",
-            status: res.status,
-            statusText: res.statusText,
+          const errJson = (await res.json()) as {
+            ok?: false;
+            message?: { bg: string; en: string };
           };
+          if (
+            errJson &&
+            typeof errJson.message === "object" &&
+            errJson.message !== null &&
+            typeof errJson.message[lang] === "string"
+          ) {
+            userMsg = errJson.message[lang];
+          }
+        } catch {
+          /* keep userMsg */
         }
-        alert(JSON.stringify(errData));
-        setGlobalError(`${t.errorText} (HTTP ${res.status}).`);
+        setGlobalError(userMsg);
         setStatus("idle");
         return;
       }
@@ -267,12 +309,6 @@ export default function CakeConstructor({
       try {
         body = (await res.json()) as ApiResponse;
       } catch {
-        alert(
-          JSON.stringify({
-            _debug: "Success status but JSON parse failed",
-            status: res.status,
-          }),
-        );
         body = null;
       }
 
@@ -338,19 +374,14 @@ export default function CakeConstructor({
         `${t.errorText}${res.status ? ` (HTTP ${res.status})` : ""}`,
       );
       setStatus("idle");
-    } catch (e) {
-      console.error(e);
-      const msg =
-        e instanceof Error && e.message
-          ? `${t.errorText} ${e.message}`
-          : t.errorText;
-      setGlobalError(msg);
+    } catch {
+      setGlobalError(t.errorText);
       setStatus("idle");
     }
   };
 
   const handleReset = () => {
-    reset();
+    reset({ ...ORDER_FORM_DEFAULTS });
     setFile(null);
     setFileError(null);
     setStep(0);
@@ -434,10 +465,20 @@ export default function CakeConstructor({
             </div>
 
             {step === 0 && (
-              <Step1 t={t} register={register} errors={errors} watch={watch} />
+              <Step1
+                t={t}
+                errors={errors}
+                watch={watch}
+                updateFormData={updateFormData}
+              />
             )}
             {step === 1 && (
-              <Step2 t={t} register={register} errors={errors} watch={watch} />
+              <Step2
+                t={t}
+                errors={errors}
+                watch={watch}
+                updateFormData={updateFormData}
+              />
             )}
             {step === 2 && (
               <Step3 t={t} register={register} errors={errors} watch={watch} />
