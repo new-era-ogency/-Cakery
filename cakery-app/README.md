@@ -11,16 +11,18 @@ cakery-app/
 ├── vite.config.ts          ← chunked production build
 ├── tailwind.config.ts
 ├── tsconfig.json
-├── vercel.json             ← Security Headers (Vercel)
+├── vercel.json             ← Security Headers + Edge function config
 ├── netlify.toml            ← Security Headers (Netlify)
 ├── .env.example            ← copy to .env.local with your real Formspree id
+├── api/
+│   └── order.ts            ← Vercel Edge Function (POST proxy to Formspree)
 ├── public/
 │   └── favicon.svg
 └── src/
     ├── main.tsx            ← React 18 root
     ├── App.tsx             ← composition root
     ├── index.css           ← Tailwind + design tokens
-    ├── env.d.ts            ← typed import.meta.env
+    ├── env.d.ts            ← typed import.meta.env (NO secrets)
     ├── components/         ← Header / Hero / Menu / About / Reviews /
     │   │                     Gallery / Contact / CakeConstructor /
     │   │                     Footer / MobileCallBar / MagneticButton / Stars
@@ -29,27 +31,55 @@ cakery-app/
     └── lib/
         ├── constants.ts    ← runtime config (env-aware, no secrets)
         ├── sanitize.ts     ← strip control / bidi-override chars
-        ├── validation.ts   ← Zod schemas + step layout
+        ├── validation.ts   ← Zod schemas + step layout (client-side)
         ├── menu-data.ts    ← cakes / pastries / bakery
         ├── gallery-data.ts
         ├── reviews-data.ts
         └── i18n/           ← BG + EN messages, typed
 ```
 
+## Architecture: where the order goes
+
+```
+[ browser form ]
+    │  POST  /api/order              (same-origin, no Formspree URL in JS)
+    ▼
+[ Vercel Edge Function api/order.ts ]
+    │  ─ honeypot / time-trap (silent 200)
+    │  ─ Zod schema validation
+    │  ─ HARD pickup-date >= now + 72h
+    │  ─ file MIME / size check
+    │  POST  $FORMSPREE_URL          (server-only env var)
+    ▼
+[ Formspree → operator inbox ]
+```
+
+The Formspree URL is **never** present in the client bundle. `connect-src`
+in CSP is therefore tightened to `'self'` only.
+
 ## Local development
 
 ```bash
 cd cakery-app
-cp .env.example .env.local        # set VITE_FORMSPREE_ENDPOINT
+cp .env.example .env.local        # set FORMSPREE_URL (server-only) + phone vars
 npm install
+
+# UI only (form will fail with "service not configured" because /api is not running):
 npm run dev                       # http://localhost:5173
+
+# Full stack (UI + Edge function), recommended:
+npm i -g vercel                   # one-time
+vercel link                       # link to a Vercel project
+vercel env pull .env.local        # pulls FORMSPREE_URL from the project (or use the local file)
+vercel dev                        # http://localhost:3000  ← /api/order is live
 ```
 
 ## Production build
 
 ```bash
-npm run build                     # outputs ./dist
+npm run build                     # outputs ./dist (static SPA)
 npm run preview                   # smoke-test the dist on http://localhost:4173
+                                  # (the API only runs on vercel/netlify)
 ```
 
 The build is **fully self-hosted JavaScript** — only the runtime calls out to
@@ -71,26 +101,35 @@ Use the headers in `vercel.json` as the canonical reference and paste the
 
 ## Security model (already enforced in code)
 
-- **Zod schemas** validate every step + the full form on submit. Step bypass
-  via dev-tools is rejected by `validateAll`.
-- **Date refine** uses local-midnight comparison (no `toISOString` shifting),
-  enforcing the 72-hour minimum lead time.
-- **Honeypot field** (`_gotcha`) is offscreen + `aria-hidden`. Time-trap
-  rejects submissions completed in <2 s.
-- **Hard GDPR guard**: `data.gdpr === true` is checked before `fetch()`.
-- **File defence-in-depth**: MIME allowlist, 5 MB cap, magic-byte check
-  (JPG/PNG signatures).
-- **No `dangerouslySetInnerHTML`** anywhere. All user input is rendered as
-  React text — automatically HTML-escaped.
+- **Server-only Formspree URL.** The browser bundle has no Formspree URL.
+  Order POSTs go to `/api/order` (same-origin); the Edge function reads
+  `FORMSPREE_URL` from `process.env` and proxies upstream. `connect-src` in
+  CSP is tightened to `'self'`.
+- **Server-side Zod validation** (in `api/order.ts`) re-checks every field
+  with strict regexes/enum allowlists, and **hard-rejects** any pickup time
+  earlier than `now + 72 h` (`Date.UTC` comparison — no TZ off-by-one).
+- **Honeypot** (`_gotcha`) and **time-trap** (`_meta_age_ms < 2 s`) run on
+  the SERVER and silently return 200 — bots get no feedback.
+- **Client mirror**: Zod runs in the browser too for instant UX feedback.
+  Step bypass via dev-tools is rejected by `validateAll` and the server
+  schema as a second line.
+- **Hard GDPR guard**: client and server both require `gdpr === "yes"`.
+- **File checks**: MIME allowlist, 5 MB cap, magic-byte check, header-only
+  pixel-bomb sniff, canvas re-encode (drops EXIF / GPS / ICC) — server
+  re-validates MIME + size.
+- **No `dangerouslySetInnerHTML`** anywhere. React text-rendering escapes
+  all user input.
 - **Sanitiser** strips C0 control characters and Unicode bidi-overrides
   (CVE-2021-42574 family) before serialising to FormData.
-- **`fetch`** is called with `credentials: "omit"`, `referrerPolicy: "no-referrer"`,
+- **`fetch`** uses `credentials: "same-origin"`, `referrerPolicy: "same-origin"`,
   `cache: "no-store"`.
-- **External links** all carry `rel="noopener noreferrer external"` and
-  `target="_blank"`.
-- **Strict CSP** is shipped via response headers; the meta-CSP is omitted
-  intentionally (multi-line meta-CSPs break in some browsers and can blank
-  the page).
+- **Iframes** (Google Maps) carry `referrerPolicy="no-referrer"` and a
+  restrictive `sandbox`.
+- **External links** all carry `rel="noopener noreferrer external"`.
+- **Strict CSP**: `script-src 'self'` (no `unsafe-eval`, no `unsafe-inline`),
+  `connect-src 'self'`, `form-action 'self'`, `frame-ancestors 'none'`.
+- **Cache-Control: no-store** on every `/api/*` response — order data is
+  never cached by intermediaries.
 
 ## Things you must do before going live
 

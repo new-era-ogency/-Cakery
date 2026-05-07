@@ -5,10 +5,9 @@ import { Check } from "lucide-react";
 
 import type { Lang, Messages } from "@/lib/i18n";
 import {
-  FORMSPREE_ENDPOINT,
-  FORMSPREE_PLACEHOLDER,
   HONEYPOT_MIN_FILL_MS,
   MAX_FILE_BYTES,
+  ORDER_ENDPOINT,
   PHONE_DISPLAY,
 } from "@/lib/constants";
 import {
@@ -24,6 +23,24 @@ import { checkImageMagic, reencodeImage } from "./order/image-magic";
 const TOTAL_STEPS = 6;
 
 type Status = "idle" | "submitting" | "success" | "error";
+
+/** Shape of the JSON envelope returned by `/api/order`. */
+type ApiResponse =
+  | { ok: true }
+  | {
+      ok: false;
+      code:
+        | "method_not_allowed"
+        | "not_configured"
+        | "invalid_body"
+        | "validation"
+        | "date_too_soon"
+        | "file_too_big"
+        | "file_wrong_type"
+        | "upstream";
+      field?: string;
+      message: { bg: string; en: string };
+    };
 
 export default function CakeConstructor({
   lang,
@@ -163,18 +180,11 @@ export default function CakeConstructor({
       return;
     }
 
-    // 3. Endpoint must be configured
-    if (FORMSPREE_ENDPOINT.includes(FORMSPREE_PLACEHOLDER)) {
-      setGlobalError(`${t.formNotConfigured} ${PHONE_DISPLAY}.`);
-      setStatus("error");
-      return;
-    }
-
-    // 4. Build anti-spam metadata. We deliberately do NOT silent-block on the
+    // 3. Build anti-spam metadata. We deliberately do NOT silent-block on the
     //    client (would create false positives + leak the heuristic to bots).
-    //    Instead the server / Formspree dashboard rule should reject any
-    //    submission with `_meta_suspicious=yes` — that path keeps an audit
-    //    trail and still shows the user a normal "thanks" experience.
+    //    The server-side /api/order route inspects these fields:
+    //      - `_gotcha`: honeypot text — silent success if filled.
+    //      - `_meta_age_ms`: time since form mount, server rejects <2s.
     const ageMs = Date.now() - formMountedAtRef.current;
     const tooFast = ageMs < HONEYPOT_MIN_FILL_MS;
     const honeypotFilled = Boolean(raw._gotcha);
@@ -205,16 +215,74 @@ export default function CakeConstructor({
       fd.append("_meta_honeypot_filled", honeypotFilled ? "yes" : "no");
       if (file) fd.append("photo", file);
 
-      const res = await fetch(FORMSPREE_ENDPOINT, {
+      const res = await fetch(ORDER_ENDPOINT, {
         method: "POST",
         body: fd,
-        credentials: "omit",
+        credentials: "same-origin",
         cache: "no-store",
-        referrerPolicy: "no-referrer",
+        // Same-origin POST: no need to leak external referrers. The server
+        // route then forwards to Formspree on its own.
+        referrerPolicy: "same-origin",
         headers: { Accept: "application/json" },
       });
-      if (!res.ok) throw new Error("Formspree responded " + res.status);
-      setStatus("success");
+
+      // Parse the structured server response. Honeypot / time-trap return
+      // 200 silently to keep heuristics opaque.
+      let body: ApiResponse | null = null;
+      try {
+        body = (await res.json()) as ApiResponse;
+      } catch {
+        body = null;
+      }
+
+      if (res.ok && body && body.ok) {
+        setStatus("success");
+        return;
+      }
+
+      // Surface server-side validation feedback in the user's language.
+      if (body && body.ok === false) {
+        if (body.code === "not_configured") {
+          setGlobalError(`${t.formNotConfigured} ${PHONE_DISPLAY}.`);
+          setStatus("error");
+          return;
+        }
+        if (body.code === "date_too_soon") {
+          setStep(4); // date is on step 5 (index 4)
+          setGlobalError(body.message[lang]);
+          // We deliberately stay in form mode (not error card) so the user
+          // can correct the date without restarting all steps.
+          return;
+        }
+        if (body.code === "validation") {
+          // Map field back to the step that owns it, when possible.
+          const fieldToStep: Record<string, number> = {
+            size: 0,
+            flavor: 1,
+            creams: 2,
+            decor: 3,
+            date: 4,
+            time: 4,
+            name: 5,
+            phone: 5,
+            email: 5,
+            notes: 5,
+            gdpr: 5,
+          };
+          const targetStep =
+            body.field && fieldToStep[body.field] !== undefined
+              ? fieldToStep[body.field]!
+              : step;
+          setStep(targetStep);
+          setGlobalError(body.message[lang]);
+          return;
+        }
+        setGlobalError(body.message[lang]);
+        setStatus("error");
+        return;
+      }
+
+      throw new Error("server " + res.status);
     } catch {
       setStatus("error");
       setGlobalError(t.errorText);

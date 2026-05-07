@@ -1,12 +1,12 @@
-// Single source of truth for runtime configuration. Values that must vary per
-// environment (Formspree endpoint) come from import.meta.env so they can be
-// injected at build time without ending up in the git history.
+// Single source of truth for client-side runtime configuration.
+//
+// IMPORTANT: the Formspree URL is a server-only secret — it lives in the
+// `FORMSPREE_URL` environment variable consumed by `api/order.ts`. The
+// browser never sees it. The browser POSTs to `/api/order`.
 
 const env = import.meta.env;
 
-export const FORMSPREE_ENDPOINT =
-  env.VITE_FORMSPREE_ENDPOINT?.trim() || "https://formspree.io/f/REPLACE_ME";
-export const FORMSPREE_PLACEHOLDER = "REPLACE_ME";
+export const ORDER_ENDPOINT = "/api/order";
 
 export const PHONE_DISPLAY = env.VITE_PHONE_DISPLAY?.trim() || "088 884 9908";
 export const PHONE_E164 = env.VITE_PHONE_E164?.trim() || "+359888849908";
@@ -21,7 +21,7 @@ export const MAP_LINK = `https://www.google.com/maps/search/?api=1&query=${encod
 )}`;
 
 // Defence-in-depth limits. Mirrored in Zod schemas. Server-side limits MUST
-// also be enforced by Formspree (or any server in front of it).
+// also be enforced by api/order.ts (already done) and Formspree.
 export const LIMITS = {
   decor: 1000,
   notes: 1000,

@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_FORMSPREE_ENDPOINT: string;
+  // Server-only `FORMSPREE_URL` is consumed by api/order.ts via process.env;
+  // it is intentionally NOT exposed to the client (no VITE_ prefix).
   readonly VITE_PHONE_DISPLAY?: string;
   readonly VITE_PHONE_E164?: string;
 }
