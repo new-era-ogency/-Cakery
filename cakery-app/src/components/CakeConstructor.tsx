@@ -8,7 +8,6 @@ import {
   HONEYPOT_MIN_FILL_MS,
   MAX_FILE_BYTES,
   ORDER_ENDPOINT,
-  PHONE_DISPLAY,
 } from "@/lib/constants";
 import {
   buildSchemas,
@@ -43,6 +42,15 @@ type ApiResponse =
       field?: string;
       message: { bg: string; en: string };
     };
+
+function formDataToPlainObject(fd: FormData): Record<string, string> {
+  return Object.fromEntries(
+    [...fd.entries()].map(([k, v]) => [
+      k,
+      v instanceof File ? `File(${v.name}, ${v.size}b, ${v.type})` : String(v),
+    ]),
+  );
+}
 
 export default function CakeConstructor({
   lang,
@@ -194,42 +202,61 @@ export default function CakeConstructor({
 
     setStatus("submitting");
     try {
-      const fd = new FormData();
-      fd.append("size", raw.size);
-      fd.append("flavor", raw.flavor);
-      fd.append("creams", raw.creams.join(", "));
-      fd.append("decor", sanitiseText(raw.decor, 1000));
-      fd.append("date", raw.date);
-      fd.append("time", raw.time);
-      fd.append("name", sanitiseText(raw.name, 100));
-      fd.append("phone", sanitisePhone(raw.phone));
-      fd.append("email", sanitiseText(raw.email, 200));
-      fd.append("notes", sanitiseText(raw.notes, 1000));
-      fd.append("gdpr", "yes");
-      fd.append("language", lang);
-      fd.append("_subject", "Cakery — нова поръчка");
-      // Formspree consumes its own honeypot field name `_gotcha`.
-      fd.append("_gotcha", raw._gotcha);
-      // Extra metadata for server-side filtering. Configure a Formspree rule
-      // that drops submissions where `_meta_suspicious = yes`.
-      fd.append("_meta_age_ms", String(ageMs));
-      fd.append("_meta_suspicious", suspicious ? "yes" : "no");
-      fd.append("_meta_honeypot_filled", honeypotFilled ? "yes" : "no");
-      if (file) fd.append("photo", file);
+      const payload: Record<string, string> = {
+        size: raw.size,
+        flavor: raw.flavor,
+        creams: raw.creams.join(", "),
+        decor: sanitiseText(raw.decor, 1000),
+        date: raw.date,
+        time: raw.time,
+        name: sanitiseText(raw.name, 100),
+        phone: sanitisePhone(raw.phone),
+        email: sanitiseText(raw.email, 200),
+        notes: sanitiseText(raw.notes, 1000),
+        gdpr: "yes",
+        language: lang,
+        _subject: "Cakery — нова поръчка",
+        _gotcha: raw._gotcha,
+        _meta_age_ms: String(ageMs),
+        _meta_suspicious: suspicious ? "yes" : "no",
+        _meta_honeypot_filled: honeypotFilled ? "yes" : "no",
+      };
 
-      const res = await fetch(ORDER_ENDPOINT, {
-        method: "POST",
-        body: fd,
-        credentials: "same-origin",
-        cache: "no-store",
-        // Same-origin POST: no need to leak external referrers. The server
-        // route then forwards to Formspree on its own.
-        referrerPolicy: "same-origin",
-        headers: { Accept: "application/json" },
-      });
+      const headers: HeadersInit = {
+        Accept: "application/json",
+      };
 
-      // Parse the structured server response. Honeypot / time-trap return
-      // 200 silently to keep heuristics opaque.
+      let res: Response;
+      if (file) {
+        const fd = new FormData();
+        for (const [k, v] of Object.entries(payload)) {
+          fd.append(k, v);
+        }
+        fd.append("photo", file);
+        console.log("Sending data:", formDataToPlainObject(fd));
+        res = await fetch(ORDER_ENDPOINT, {
+          method: "POST",
+          body: fd,
+          credentials: "same-origin",
+          cache: "no-store",
+          referrerPolicy: "same-origin",
+          headers,
+        });
+      } else {
+        console.log("Sending data:", payload);
+        res = await fetch(ORDER_ENDPOINT, {
+          method: "POST",
+          body: JSON.stringify(payload),
+          credentials: "same-origin",
+          cache: "no-store",
+          referrerPolicy: "same-origin",
+          headers: {
+            ...headers,
+            "Content-Type": "application/json; charset=utf-8",
+          },
+        });
+      }
+
       let body: ApiResponse | null = null;
       try {
         body = (await res.json()) as ApiResponse;
@@ -237,74 +264,43 @@ export default function CakeConstructor({
         body = null;
       }
 
-      // DEBUG / Zod: server returns `{ error: error.message }` at 400
+      // Zod / debug envelope: `{ error: string }`
       if (
         body &&
         "error" in body &&
         typeof (body as { error?: unknown }).error === "string"
       ) {
-        setGlobalError((body as { error: string }).error);
+        const msg = (body as { error: string }).error;
+        setGlobalError(msg);
         setStatus("idle");
         return;
       }
 
-      if (res.ok && body && "ok" in body && body.ok === true) {
+      if (res.status === 200 && body && "ok" in body && body.ok === true) {
         setStatus("success");
         return;
       }
 
-      // Surface server-side validation feedback in the user's language.
+      // Any non-success HTTP or unexpected JSON: stay on current step — do not move `step`.
+      let msg = `${t.errorText} (HTTP ${res.status}).`;
       if (
         body &&
         "ok" in body &&
         body.ok === false &&
-        "code" in body &&
         "message" in body
       ) {
-        if (body.code === "not_configured") {
-          setGlobalError(`${t.formNotConfigured} ${PHONE_DISPLAY}.`);
-          setStatus("error");
-          return;
-        }
-        if (body.code === "date_too_soon") {
-          setStep(4); // date is on step 5 (index 4)
-          setGlobalError(body.message[lang]);
-          // We deliberately stay in form mode (not error card) so the user
-          // can correct the date without restarting all steps.
-          return;
-        }
-        if (body.code === "validation") {
-          // Map field back to the step that owns it, when possible.
-          const fieldToStep: Record<string, number> = {
-            size: 0,
-            flavor: 1,
-            creams: 2,
-            decor: 3,
-            date: 4,
-            time: 4,
-            name: 5,
-            phone: 5,
-            email: 5,
-            notes: 5,
-            gdpr: 5,
-          };
-          const targetStep =
-            body.field && fieldToStep[body.field] !== undefined
-              ? fieldToStep[body.field]!
-              : step;
-          setStep(targetStep);
-          setGlobalError(body.message[lang]);
-          return;
-        }
-        setGlobalError(body.message[lang]);
-        setStatus("error");
-        return;
+        msg = body.message[lang];
       }
-
-      throw new Error("server " + res.status);
-    } catch {
-      setStatus("error");
-      setGlobalError(t.errorText);
+      setGlobalError(msg);
+      setStatus("idle");
+    } catch (e) {
+      console.error(e);
+      const msg =
+        e instanceof Error && e.message
+          ? `${t.errorText} ${e.message}`
+          : t.errorText;
+      setGlobalError(msg);
+      setStatus("idle");
     }
   };
 

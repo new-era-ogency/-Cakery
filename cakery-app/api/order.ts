@@ -8,11 +8,11 @@
  *   1. Method gate (POST only).
  *   2. Honeypot — silent 200 if the bot field is filled.
  *   3. Time-trap — silent 200 if the form was submitted in <2 s.
- *   4. Zod validation of every field, with strict regexes & enum allowlists.
- *   5. Hard date check: pickup must be >= now + 72 h.
- *   6. File check: MIME allowlist, size cap. (Re-encode happens in browser;
- *      a hardened server pipeline still has to do its own re-encode.)
- *   7. Forward to Formspree — server-only secret URL — with original FormData.
+ *   4. Body: `multipart/form-data` (with optional `photo` file) or
+ *      `application/json` with the same string fields.
+ *   5. Zod validation of fields (temporary relaxed schema possible for debug).
+ *   6. File check when `photo` is present (MIME + size).
+ *   7. Forward to Formspree — server-only secret URL.
  *
  * Edge runtime is used for two reasons:
  *   - `await req.formData()` is built in (no formidable/busboy dependency).
@@ -101,6 +101,90 @@ function jsonOk(): Response {
   });
 }
 
+/**
+ * Supports `multipart/form-data` (incl. file `photo`) and `application/json`
+ * with the same string fields FormData would carry (JSON path has no upload).
+ */
+async function parseBodyToFormData(
+  req: Request,
+): Promise<{ fd: FormData } | { err: Response }> {
+  const ct = (req.headers.get("content-type") || "").toLowerCase();
+
+  if (ct.includes("application/json")) {
+    let payload: unknown;
+    try {
+      payload = await req.json();
+    } catch {
+      return {
+        err: jsonError(400, {
+          code: "invalid_body",
+          message: { bg: "Невалидни данни (JSON).", en: "Invalid JSON body." },
+        }),
+      };
+    }
+
+    const data =
+      typeof payload === "object" &&
+      payload !== null &&
+      !Array.isArray(payload)
+        ? (payload as Record<string, unknown>)
+        : null;
+
+    if (!data) {
+      return {
+        err: jsonError(400, {
+          code: "invalid_body",
+          message: { bg: "Невалидни данни.", en: "Invalid body." },
+        }),
+      };
+    }
+
+    const keys = [
+      "size",
+      "flavor",
+      "creams",
+      "decor",
+      "date",
+      "time",
+      "name",
+      "phone",
+      "email",
+      "notes",
+      "gdpr",
+      "language",
+      "_subject",
+      "_gotcha",
+      "_meta_age_ms",
+      "_meta_suspicious",
+      "_meta_honeypot_filled",
+    ] as const;
+
+    const fd = new FormData();
+    for (const key of keys) {
+      const v = data[key];
+      if (v === undefined || v === null) continue;
+      if (Array.isArray(v)) {
+        fd.append(key, v.map(String).join(", "));
+        continue;
+      }
+      fd.append(key, typeof v === "string" ? v : String(v));
+    }
+
+    return { fd };
+  }
+
+  try {
+    return { fd: await req.formData() };
+  } catch {
+    return {
+      err: jsonError(400, {
+        code: "invalid_body",
+        message: { bg: "Невалидни данни.", en: "Invalid body." },
+      }),
+    };
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
   console.log("Body received:", req.body);
 
@@ -127,16 +211,12 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // 3. Parse FormData
-  let fd: FormData;
-  try {
-    fd = await req.formData();
-  } catch {
-    return jsonError(400, {
-      code: "invalid_body",
-      message: { bg: "Невалидни данни.", en: "Invalid body." },
-    });
+  // 3. Parse multipart or JSON → unified FormData for the rest of the pipeline
+  const parsed = await parseBodyToFormData(req);
+  if ("err" in parsed) {
+    return parsed.err;
   }
+  const fd = parsed.fd;
 
   console.log("FormData (summary):", summarizeFormData(fd));
 
@@ -168,9 +248,9 @@ export default async function handler(req: Request): Promise<Response> {
       return l === "en" ? "en" : "bg";
     })(),
   };
-  const parsed = OrderSchema.safeParse(candidate);
-  if (!parsed.success) {
-    return jsonValidationError(parsed.error);
+  const orderParsed = OrderSchema.safeParse(candidate);
+  if (!orderParsed.success) {
+    return jsonValidationError(orderParsed.error);
   }
 
   // 7. DEBUG: 72-hour pickup rule temporarily disabled for submission testing.
