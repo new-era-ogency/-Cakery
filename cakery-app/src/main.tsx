@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
+console.log("Cakery App Version 1.0.1 - Production Build");
+
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("#root missing in index.html");
 

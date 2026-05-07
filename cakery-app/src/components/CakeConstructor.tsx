@@ -8,6 +8,7 @@ import {
   HONEYPOT_MIN_FILL_MS,
   MAX_FILE_BYTES,
   ORDER_ENDPOINT,
+  PHONE_DISPLAY,
 } from "@/lib/constants";
 import {
   buildSchemas,
@@ -26,8 +27,6 @@ type Status = "idle" | "submitting" | "success" | "error";
 /** Shape of the JSON envelope returned by `/api/order`. */
 type ApiResponse =
   | { ok: true }
-  /** DEBUG: Zod validation failures return `{ error: message }` with HTTP 400. */
-  | { error: string }
   | {
       ok: false;
       code:
@@ -42,15 +41,6 @@ type ApiResponse =
       field?: string;
       message: { bg: string; en: string };
     };
-
-function formDataToPlainObject(fd: FormData): Record<string, string> {
-  return Object.fromEntries(
-    [...fd.entries()].map(([k, v]) => [
-      k,
-      v instanceof File ? `File(${v.name}, ${v.size}b, ${v.type})` : String(v),
-    ]),
-  );
-}
 
 export default function CakeConstructor({
   lang,
@@ -233,7 +223,6 @@ export default function CakeConstructor({
           fd.append(k, v);
         }
         fd.append("photo", file);
-        console.log("Sending data:", formDataToPlainObject(fd));
         res = await fetch(ORDER_ENDPOINT, {
           method: "POST",
           body: fd,
@@ -243,7 +232,6 @@ export default function CakeConstructor({
           headers,
         });
       } else {
-        console.log("Sending data:", payload);
         res = await fetch(ORDER_ENDPOINT, {
           method: "POST",
           body: JSON.stringify(payload),
@@ -264,34 +252,61 @@ export default function CakeConstructor({
         body = null;
       }
 
-      // Zod / debug envelope: `{ error: string }`
-      if (
-        body &&
-        "error" in body &&
-        typeof (body as { error?: unknown }).error === "string"
-      ) {
-        const msg = (body as { error: string }).error;
-        setGlobalError(msg);
-        setStatus("idle");
-        return;
-      }
-
-      if (res.status === 200 && body && "ok" in body && body.ok === true) {
+      if (res.ok && body && "ok" in body && body.ok === true) {
         setStatus("success");
         return;
       }
 
-      // Any non-success HTTP or unexpected JSON: stay on current step — do not move `step`.
-      let msg = `${t.errorText} (HTTP ${res.status}).`;
-      if (
-        body &&
-        "ok" in body &&
-        body.ok === false &&
-        "message" in body
-      ) {
-        msg = body.message[lang];
+      const fieldToStep: Record<string, number> = {
+        size: 0,
+        flavor: 1,
+        creams: 2,
+        decor: 3,
+        photo: 3,
+        date: 4,
+        time: 4,
+        name: 5,
+        phone: 5,
+        email: 5,
+        notes: 5,
+        gdpr: 5,
+      };
+
+      if (body && "ok" in body && body.ok === false && "message" in body) {
+        switch (body.code) {
+          case "not_configured":
+            setGlobalError(`${t.formNotConfigured} ${PHONE_DISPLAY}.`);
+            break;
+          case "date_too_soon":
+            setStep(4);
+            setGlobalError(body.message[lang]);
+            break;
+          case "validation":
+          case "invalid_body": {
+            const targetStep =
+              body.field !== undefined &&
+              fieldToStep[body.field as string] !== undefined
+                ? fieldToStep[body.field as string]!
+                : step;
+            setStep(targetStep);
+            setGlobalError(body.message[lang]);
+            break;
+          }
+          case "file_too_big":
+          case "file_wrong_type":
+            setStep(3);
+            setGlobalError(body.message[lang]);
+            break;
+          default:
+            setGlobalError(body.message[lang]);
+        }
+        setStatus("idle");
+        return;
       }
-      setGlobalError(msg);
+
+      setGlobalError(
+        `${t.errorText}${res.status ? ` (HTTP ${res.status})` : ""}`,
+      );
       setStatus("idle");
     } catch (e) {
       console.error(e);

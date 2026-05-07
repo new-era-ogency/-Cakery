@@ -2,21 +2,17 @@
  * Vercel Edge Function — POST /api/order
  *
  * Trust boundary: this function is the ONLY thing that knows the Formspree
- * URL. The browser bundle has no idea where the order ultimately lands.
+ * URL. The browser POSTs to same-origin `/api/order` only.
  *
  * Pipeline:
  *   1. Method gate (POST only).
- *   2. Honeypot — silent 200 if the bot field is filled.
- *   3. Time-trap — silent 200 if the form was submitted in <2 s.
- *   4. Body: `multipart/form-data` (with optional `photo` file) or
- *      `application/json` with the same string fields.
- *   5. Zod validation of fields (temporary relaxed schema possible for debug).
- *   6. File check when `photo` is present (MIME + size).
- *   7. Forward to Formspree — server-only secret URL.
- *
- * Edge runtime is used for two reasons:
- *   - `await req.formData()` is built in (no formidable/busboy dependency).
- *   - Cold starts are fast and the function has no Node-only API needs.
+ *   2. Parse `multipart/form-data` or `application/json` → unified FormData.
+ *   3. Honeypot — silent 200 if `_gotcha` is filled.
+ *   4. Time-trap — silent 200 if `_meta_age_ms` &lt; 2s.
+ *   5. Strict Zod validation (mirrors client allowlists).
+ *   6. Pickup datetime must be ≥ now + 72h (UTC composition).
+ *   7. Optional `photo`: MIME allowlist + size cap.
+ *   8. Forward multipart to Formspree (server-side `FORMSPREE_URL`).
  */
 
 import { z } from "zod";
@@ -25,45 +21,66 @@ export const config = {
   runtime: "edge",
 };
 
+const LIMITS = {
+  decor: 1000,
+  notes: 1000,
+  name: 100,
+  phone: 30,
+  email: 200,
+} as const;
+
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MIN_PICKUP_HOURS = 72;
 const HONEYPOT_MIN_FILL_MS = 2000;
 
-/** DEBUG: permissive schema — tighten before production. */
+/** Must stay in sync with `messages-bg.ts` / `messages-en.ts` option ids */
+const sizeIds = ["6", "10", "16", "20"] as const;
+const flavorIds = [
+  "vanilla",
+  "chocolate",
+  "red-velvet",
+  "lemon",
+  "caramel",
+  "other",
+] as const;
+const creamIds = ["mascarpone", "buttercream", "ganache", "fruit"] as const;
+
+const phoneRe = /^\+?[\d\s().-]{7,30}$/;
+const nameRe = /^[\p{L}\p{M}'\-.\s]{2,100}$/u;
+const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 const OrderSchema = z.object({
-  size: z.string().optional(),
-  flavor: z.string().optional(),
-  creams: z.string().optional(),
-  decor: z.string().optional(),
-  date: z.string().optional(),
-  time: z.string().optional(),
-  name: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().optional(),
-  notes: z.string().optional(),
-  gdpr: z.string().optional(),
-  language: z.enum(["bg", "en"]).optional(),
+  size: z.enum(sizeIds),
+  flavor: z.enum(flavorIds),
+  creams: z
+    .string()
+    .min(1)
+    .max(200)
+    .refine((v) => {
+      const items = v
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      return (
+        items.length > 0 &&
+        items.length <= creamIds.length &&
+        items.every((id) => (creamIds as readonly string[]).includes(id))
+      );
+    }, "creams"),
+  decor: z.string().max(LIMITS.decor).optional().or(z.literal("")),
+  date: z.string().regex(dateRe),
+  time: z.string().regex(timeRe),
+  name: z.string().min(2).max(LIMITS.name).regex(nameRe),
+  phone: z.string().min(7).max(LIMITS.phone).regex(phoneRe),
+  email: z.union([
+    z.literal(""),
+    z.string().max(LIMITS.email).email(),
+  ]),
+  notes: z.string().max(LIMITS.notes).optional().or(z.literal("")),
+  gdpr: z.literal("yes"),
+  language: z.enum(["bg", "en"]),
 });
-
-function jsonValidationError(error: z.ZodError): Response {
-  return new Response(JSON.stringify({ error: error.message }), {
-    status: 400,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-}
-
-function summarizeFormData(fd: FormData): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [key, value] of fd.entries()) {
-    out[key] =
-      value instanceof File
-        ? `File(${value.name}, ${value.size}b, ${value.type})`
-        : String(value);
-  }
-  return out;
-}
 
 type Lang = "bg" | "en";
 
@@ -101,10 +118,6 @@ function jsonOk(): Response {
   });
 }
 
-/**
- * Supports `multipart/form-data` (incl. file `photo`) and `application/json`
- * with the same string fields FormData would carry (JSON path has no upload).
- */
 async function parseBodyToFormData(
   req: Request,
 ): Promise<{ fd: FormData } | { err: Response }> {
@@ -118,7 +131,10 @@ async function parseBodyToFormData(
       return {
         err: jsonError(400, {
           code: "invalid_body",
-          message: { bg: "Невалидни данни (JSON).", en: "Invalid JSON body." },
+          message: {
+            bg: "Невалидни данни (JSON).",
+            en: "Invalid JSON body.",
+          },
         }),
       };
     }
@@ -186,9 +202,6 @@ async function parseBodyToFormData(
 }
 
 export default async function handler(req: Request): Promise<Response> {
-  console.log("Body received:", req.body);
-
-  // 1. Method
   if (req.method !== "POST") {
     return jsonError(405, {
       code: "method_not_allowed",
@@ -196,7 +209,6 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // 2. Endpoint configured
   const formspreeUrl = (
     (globalThis as unknown as { process?: { env?: Record<string, string> } })
       .process?.env?.FORMSPREE_URL ?? ""
@@ -211,26 +223,20 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // 3. Parse multipart or JSON → unified FormData for the rest of the pipeline
   const parsed = await parseBodyToFormData(req);
   if ("err" in parsed) {
     return parsed.err;
   }
   const fd = parsed.fd;
 
-  console.log("FormData (summary):", summarizeFormData(fd));
-
-  // 4. Honeypot — silently report success so we don't leak the heuristic.
   const gotcha = String(fd.get("_gotcha") ?? "");
   if (gotcha) return jsonOk();
 
-  // 5. Time-trap (server-side; client also sends _meta_age_ms).
   const ageMs = Number(fd.get("_meta_age_ms") ?? 0);
   if (Number.isFinite(ageMs) && ageMs > 0 && ageMs < HONEYPOT_MIN_FILL_MS) {
     return jsonOk();
   }
 
-  // 6. Zod validation
   const candidate = {
     size: String(fd.get("size") ?? ""),
     flavor: String(fd.get("flavor") ?? ""),
@@ -248,14 +254,56 @@ export default async function handler(req: Request): Promise<Response> {
       return l === "en" ? "en" : "bg";
     })(),
   };
+
   const orderParsed = OrderSchema.safeParse(candidate);
   if (!orderParsed.success) {
-    return jsonValidationError(orderParsed.error);
+    const issue = orderParsed.error.issues[0];
+    const field = issue?.path?.[0]?.toString();
+    return jsonError(422, {
+      code: "validation",
+      ...(field ? { field } : {}),
+      message: {
+        bg: "Невалидни данни в полето.",
+        en: "Invalid value in a field.",
+      },
+    });
   }
 
-  // 7. DEBUG: 72-hour pickup rule temporarily disabled for submission testing.
+  const { date, time } = orderParsed.data;
+  const [yy, mm, dd] = date.split("-").map(Number);
+  const [hh, mi] = time.split(":").map(Number);
+  if (
+    yy === undefined ||
+    mm === undefined ||
+    dd === undefined ||
+    hh === undefined ||
+    mi === undefined
+  ) {
+    return jsonError(422, {
+      code: "validation",
+      field: "date",
+      message: {
+        bg: "Невалидна дата или час.",
+        en: "Invalid date or time.",
+      },
+    });
+  }
 
-  // 8. File checks (best effort — server pipeline must re-encode for real).
+  const pickupMs = Date.UTC(yy, mm - 1, dd, hh, mi, 0, 0);
+  const earliestMs = Date.now() + MIN_PICKUP_HOURS * 3600 * 1000;
+  if (pickupMs < earliestMs) {
+    return jsonError(422, {
+      code: "date_too_soon",
+      field: "date",
+      message: {
+        bg:
+          "Поръчката трябва да е поне 72 часа напред. Моля, изберете по-късна дата.",
+        en:
+          "The order must be at least 72 hours from now. Please pick a later date.",
+      },
+    });
+  }
+
   const photo = fd.get("photo");
   if (photo instanceof File && photo.size > 0) {
     if (photo.size > MAX_FILE_BYTES) {
@@ -280,9 +328,6 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // 9. Forward to Formspree. We rebuild a clean FormData that drops every
-  //    underscore-prefixed internal field except the ones Formspree itself
-  //    consumes (`_gotcha`, `_subject`).
   const out = new FormData();
   for (const [key, value] of fd.entries()) {
     if (key.startsWith("_meta_")) continue;
@@ -300,8 +345,10 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonError(502, {
       code: "upstream",
       message: {
-        bg: "Услугата временно не работи. Моля, опитайте по-късно или ни се обадете.",
-        en: "Order service is temporarily unavailable. Please try later or call us.",
+        bg:
+          "Услугата временно не работи. Моля, опитайте по-късно или ни се обадете.",
+        en:
+          "Order service is temporarily unavailable. Please try later or call us.",
       },
     });
   }
