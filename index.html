@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="bg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cakery — Кейкъри | Сладкарница София</title>
+    <meta
+      name="description"
+      content="Cakery / Кейкъри — авторска сладкарница в Младост 2, София. Ръчно приготвени торти по поръчка, пресни сладкиши, кроасани и баница."
+    />
+    <meta name="theme-color" content="#3a2418" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!--
+      Permissions-Policy via meta is honoured by Chromium-based browsers.
+      We deny camera, microphone, geolocation, payment, USB, accelerometer.
+    -->
+    <meta
+      http-equiv="Permissions-Policy"
+      content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=()"
+    />
+
+    <!--
+      ─────────────────────────────────────────────────────────────────────────
+      Security Headers — set on the HOST (Vercel / Netlify / nginx / Apache).
+      A meta-CSP with multiple directives can break in some browsers and is
+      ignored for some directives (e.g. frame-ancestors), so PRODUCTION CSP
+      MUST be sent as an HTTP response header. Ready-to-paste configs:
+
+        Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+        X-Content-Type-Options: nosniff
+        X-Frame-Options: DENY
+        Referrer-Policy: strict-origin-when-cross-origin
+        Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+        Cross-Origin-Opener-Policy: same-origin
+        Cross-Origin-Resource-Policy: same-site
+
+      Content-Security-Policy (PROTOTYPE — keeps Babel & Tailwind CDN running;
+      remove 'unsafe-eval' and 'unsafe-inline' AFTER bundling locally):
+
+        Content-Security-Policy:
+          default-src 'self';
+          script-src 'self' 'unsafe-eval' 'unsafe-inline'
+            https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://esm.sh;
+          script-src-elem 'self' 'unsafe-inline'
+            https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://esm.sh;
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src 'self' https://fonts.gstatic.com data:;
+          img-src 'self' data: https://images.unsplash.com;
+          connect-src 'self' https://formspree.io https://esm.sh;
+          frame-src https://www.google.com;
+          form-action 'self' https://formspree.io;
+          frame-ancestors 'none';
+          base-uri 'self';
+          object-src 'none';
+          upgrade-insecure-requests
+      ─────────────────────────────────────────────────────────────────────────
+    -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- PROTOTYPE: Tailwind Play CDN. В production — built CSS bundle. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              caramel: "#C8845A",
+              chocolate: "#8B5E3C",
+              cream: "#F2D9C2",
+              espresso: "#3A2418",
+              ink: "#1A1410",
+              porcelain: "#FBF6EE",
+            },
+            fontFamily: {
+              display: ['"Fraunces"', "Georgia", "serif"],
+              sans: ['"Inter"', "system-ui", "sans-serif"],
+            },
+            boxShadow: {
+              soft: "0 1px 2px rgba(58,36,24,0.04), 0 8px 30px rgba(58,36,24,0.08)",
+              lift: "0 10px 40px -10px rgba(58,36,24,0.25), 0 2px 6px rgba(58,36,24,0.06)",
+              ring: "0 0 0 1px rgba(58,36,24,0.06), 0 30px 60px -20px rgba(58,36,24,0.25)",
+            },
+            backgroundImage: {
+              "grain":
+                "radial-gradient(circle at 25% 25%, rgba(255,255,255,0.10), transparent 40%), radial-gradient(circle at 75% 75%, rgba(0,0,0,0.05), transparent 50%)",
+            },
+            transitionTimingFunction: {
+              silk: "cubic-bezier(0.22, 1, 0.36, 1)",
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-feature-settings: "ss01", "cv11";
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        position: relative;
+      }
+      /* Subtle paper-grain over the entire page (SVG noise, very low opacity).
+         pointer-events:none so it never intercepts clicks. */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        opacity: 0.45;
+        mix-blend-mode: multiply;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.23 0 0 0 0 0.14 0 0 0 0 0.09 0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      }
+      #root {
+        position: relative;
+        z-index: 2;
+      }
+      .font-display {
+        font-feature-settings: "ss01";
+        font-optical-sizing: auto;
+        letter-spacing: -0.025em;
+      }
+
+      /* Premium button — sliding caramel sheen */
+      .btn-premium {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+      }
+      .btn-premium::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 50%, transparent 70%);
+        transform: translateX(-110%);
+        transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        z-index: 1;
+        pointer-events: none;
+      }
+      .btn-premium:hover::before {
+        transform: translateX(110%);
+      }
+      .btn-premium > * {
+        position: relative;
+        z-index: 2;
+      }
+
+      /* Card glow on hover */
+      .card-glow {
+        transition:
+          transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+          border-color 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .card-glow:hover {
+        transform: translateY(-6px);
+        box-shadow:
+          0 1px 2px rgba(58, 36, 24, 0.06),
+          0 24px 60px -20px rgba(58, 36, 24, 0.32),
+          0 0 0 1px rgba(200, 132, 90, 0.35);
+        border-color: rgba(200, 132, 90, 0.5);
+      }
+
+      /* Scroll-reveal: класове добавят се през IntersectionObserver в app.js */
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition:
+          opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: opacity, transform;
+      }
+      .reveal.is-visible {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* Parallax hero визуал */
+      .parallax-img {
+        will-change: transform;
+        transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      /* Магнитна бутон обвивка */
+      .magnetic {
+        will-change: transform;
+        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      /* Marquee надпис: само в hero за по-богато усещане */
+      @keyframes marquee {
+        from {
+          transform: translateX(0%);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
+      .marquee-track {
+        animation: marquee 40s linear infinite;
+      }
+
+      /* Lightbox / dialog влизане */
+      @keyframes pop-in {
+        from {
+          opacity: 0;
+          transform: scale(0.96) translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+      .pop-in {
+        animation: pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+
+      /* Уважение към prefers-reduced-motion */
+      @media (prefers-reduced-motion: reduce) {
+        .reveal,
+        .reveal.is-visible,
+        .parallax-img,
+        .magnetic,
+        .marquee-track,
+        .pop-in {
+          animation: none !important;
+          transition: none !important;
+          transform: none !important;
+          opacity: 1 !important;
+        }
+      }
+
+      /* Selection в духа на бранда */
+      ::selection {
+        background: #c8845a;
+        color: #fbf6ee;
+      }
+
+      /* Скрол-бар на :root за акуратност */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(58, 36, 24, 0.25);
+        border-radius: 999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(58, 36, 24, 0.45);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-porcelain font-sans text-espresso antialiased">
+    <div id="root"></div>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"
+      integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"
+      integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <!--
+      PROTOTYPE: Babel Standalone компилира JSX в браузъра.
+      В production: build с esbuild / Vite / Rollup и махнете 'unsafe-eval' от CSP.
+    -->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js"
+      integrity="sha384-EIcs2MbARRLcLs7Gv2wqqhhfMlcLeW9yuJsWki1r5iveN1F5gpzHOwAKycJqSQOI"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <script type="module">
+      window.zodPromise = import("https://esm.sh/zod@3.23.8")
+        .then((m) => m.z)
+        .catch((err) => {
+          console.error("Zod failed to load", err);
+          window.zodLoadFailed = true;
+          return null;
+        });
+    </script>
+
+    <script type="text/babel" src="app.js"></script>
+  </body>
+</html>
