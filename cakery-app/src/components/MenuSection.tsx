@@ -30,13 +30,13 @@ export default function MenuSection({
       <div className="pointer-events-none absolute -left-40 top-1/3 h-[420px] w-[420px] rounded-full bg-caramel/15 blur-[140px]" />
       <div className="pointer-events-none absolute right-0 top-10 h-[280px] w-[280px] rounded-full bg-chocolate/10 blur-[120px]" />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
-        <div className="reveal flex items-end justify-between gap-8 pb-14">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+        <div className="reveal flex flex-col gap-6 pb-10 sm:flex-row sm:items-end sm:justify-between sm:gap-8 sm:pb-14">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-caramel">
               · {t.menuEyebrow}
             </p>
-            <h2 className="mt-3 whitespace-pre-line font-display text-5xl font-bold leading-[0.92] tracking-[-0.035em] text-espresso sm:text-6xl">
+            <h2 className="mt-3 whitespace-pre-line font-display text-[clamp(2rem,7vw,3.75rem)] font-bold leading-[0.95] tracking-[-0.035em] text-espresso sm:text-5xl md:text-6xl">
               {t.menuTitle}
             </h2>
           </div>
@@ -45,9 +45,9 @@ export default function MenuSection({
           </p>
         </div>
 
-        <div className="reveal mb-12 flex justify-center">
+        <div className="reveal mb-12 flex justify-center px-1">
           <div
-            className="inline-flex rounded-full border border-espresso/10 bg-white/70 p-1 shadow-soft backdrop-blur-md"
+            className="flex max-w-full flex-wrap justify-center gap-1 rounded-full border border-espresso/10 bg-white/70 p-1 shadow-soft backdrop-blur-md"
             role="tablist"
           >
             {TAB_KEYS.map((key) => (
@@ -57,7 +57,7 @@ export default function MenuSection({
                 role="tab"
                 aria-selected={activeTab === key}
                 onClick={() => setActiveTab(key)}
-                className={`min-h-[44px] rounded-full px-6 text-sm font-semibold transition-all duration-500 ease-silk ${
+                className={`min-h-[44px] rounded-full px-4 text-sm font-semibold transition-all duration-500 ease-silk sm:px-6 ${
                   activeTab === key
                     ? "bg-espresso text-porcelain shadow-lift"
                     : "text-espresso/60 hover:text-espresso"
@@ -103,7 +103,7 @@ export default function MenuSection({
                   </span>
                   <a
                     href="#order-section"
-                    className="btn-premium inline-flex min-h-[42px] items-center gap-2 rounded-full bg-caramel px-5 text-xs font-semibold uppercase tracking-widest text-espresso shadow-soft hover:bg-porcelain"
+                    className="btn-premium inline-flex min-h-[44px] items-center gap-2 rounded-full bg-caramel px-5 text-xs font-semibold uppercase tracking-widest text-espresso shadow-soft hover:bg-porcelain"
                   >
                     <span>{t.orderCake}</span>
                     <span aria-hidden="true">→</span>
@@ -146,7 +146,7 @@ export default function MenuSection({
                   <a
                     href="#order-section"
                     aria-label={t.orderCake}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-cream text-espresso transition group-hover:bg-espresso group-hover:text-porcelain"
+                    className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full bg-cream text-espresso transition group-hover:bg-espresso group-hover:text-porcelain"
                   >
                     →
                   </a>

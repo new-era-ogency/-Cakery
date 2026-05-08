@@ -30,7 +30,7 @@ export default function App() {
         setMobileOpen={setMobileOpen}
         t={t}
       />
-      <main className="pb-20 md:pb-0">
+      <main className="pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-0">
         <Hero t={t} />
         <MenuSection lang={lang} t={t} />
         <AboutSection t={t} />

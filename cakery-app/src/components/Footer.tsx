@@ -96,12 +96,12 @@ export default function Footer({ t }: { t: Messages }) {
   ];
 
   return (
-    <footer className="relative isolate overflow-hidden bg-espresso text-porcelain">
+    <footer className="relative isolate overflow-hidden bg-espresso pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] text-porcelain md:pb-0">
       <div className="pointer-events-none absolute -left-40 top-10 h-[520px] w-[520px] rounded-full bg-caramel/20 blur-[180px]" />
       <div className="pointer-events-none absolute -right-32 bottom-10 h-[460px] w-[460px] rounded-full bg-chocolate/30 blur-[180px]" />
 
       <div className="relative border-b border-porcelain/10 bg-ink/40 py-16 sm:py-20">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
           <div className="flex flex-col gap-10 md:flex-row md:items-end md:justify-between">
             <h2 className="font-display text-5xl font-bold leading-[0.92] tracking-[-0.035em] sm:text-6xl lg:text-7xl">
               {t.footerHeadline1}
@@ -128,7 +128,7 @@ export default function Footer({ t }: { t: Messages }) {
         </div>
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-10">
         <div className="grid gap-12 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-5">
             <a
@@ -232,7 +232,7 @@ export default function Footer({ t }: { t: Messages }) {
       </div>
 
       <div className="relative border-t border-porcelain/10 bg-ink/40">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 py-6 text-xs text-porcelain/50 sm:flex-row sm:px-8 lg:px-12">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-porcelain/50 sm:flex-row sm:px-6 lg:px-10">
           <p>
             © {new Date().getFullYear()} Cakery · Кейкъри. {t.footerRights}
           </p>

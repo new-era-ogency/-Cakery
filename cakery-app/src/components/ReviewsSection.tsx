@@ -46,15 +46,15 @@ export default function ReviewsSection({
       <div className="pointer-events-none absolute -left-32 top-10 h-[460px] w-[460px] rounded-full bg-caramel/25 blur-[160px]" />
       <div className="pointer-events-none absolute -right-24 bottom-0 h-[360px] w-[360px] rounded-full bg-chocolate/30 blur-[160px]" />
 
-      <div className="relative mx-auto max-w-4xl px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-10">
         <div className="reveal mb-12 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-caramel/90">
             · {t.reviewsEyebrow}
           </p>
-          <h2 className="mt-3 font-display text-5xl font-bold leading-[0.95] tracking-[-0.035em] sm:text-6xl">
+          <h2 className="mt-3 font-display text-[clamp(2rem,7vw,3.75rem)] font-bold leading-[0.95] tracking-[-0.035em] sm:text-5xl md:text-6xl">
             {t.reviewsTitle}
           </h2>
-          <p className="mt-4 text-porcelain/65">{t.reviewsSub}</p>
+          <p className="mt-4 text-sm text-porcelain/65 sm:text-base">{t.reviewsSub}</p>
         </div>
 
         <div className="relative">
@@ -91,7 +91,7 @@ export default function ReviewsSection({
             type="button"
             onClick={() => go(current - 1)}
             aria-label={t.prevAria}
-            className="absolute -left-4 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-porcelain/20 bg-porcelain/10 text-porcelain shadow-soft backdrop-blur transition hover:bg-porcelain hover:text-espresso sm:-left-8"
+            className="absolute -left-2 top-1/2 inline-flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full border border-porcelain/20 bg-porcelain/10 text-porcelain shadow-soft backdrop-blur transition hover:bg-porcelain hover:text-espresso sm:-left-8"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -99,7 +99,7 @@ export default function ReviewsSection({
             type="button"
             onClick={() => go(current + 1)}
             aria-label={t.nextAria}
-            className="absolute -right-4 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-porcelain/20 bg-porcelain/10 text-porcelain shadow-soft backdrop-blur transition hover:bg-porcelain hover:text-espresso sm:-right-8"
+            className="absolute -right-2 top-1/2 inline-flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-full border border-porcelain/20 bg-porcelain/10 text-porcelain shadow-soft backdrop-blur transition hover:bg-porcelain hover:text-espresso sm:-right-8"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -113,12 +113,16 @@ export default function ReviewsSection({
               role="tab"
               aria-selected={i === current}
               onClick={() => go(i)}
-              className={`h-1.5 rounded-full transition-all duration-500 ease-silk ${
-                i === current
-                  ? "w-8 bg-caramel"
-                  : "w-1.5 bg-porcelain/30 hover:bg-porcelain/60"
-              }`}
-            />
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-2"
+            >
+              <span
+                className={`block h-1.5 rounded-full transition-all duration-500 ease-silk ${
+                  i === current
+                    ? "w-8 bg-caramel"
+                    : "w-1.5 bg-porcelain/30 hover:bg-porcelain/60"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>

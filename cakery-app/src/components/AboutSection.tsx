@@ -9,7 +9,7 @@ export default function AboutSection({ t }: { t: Messages }) {
       <div className="pointer-events-none absolute right-0 top-1/4 h-[440px] w-[440px] rounded-full bg-caramel/15 blur-[160px]" />
       <div className="pointer-events-none absolute bottom-0 left-0 h-[300px] w-[300px] rounded-full bg-chocolate/10 blur-[120px]" />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
         <div className="grid gap-14 lg:grid-cols-12 lg:items-center lg:gap-20">
           <div className="reveal relative order-2 lg:order-1 lg:col-span-6">
             <div className="aspect-[4/5] overflow-hidden rounded-[28px] shadow-ring">
@@ -34,10 +34,10 @@ export default function AboutSection({ t }: { t: Messages }) {
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-caramel">
               · {t.aboutEyebrow}
             </p>
-            <h2 className="mt-3 whitespace-pre-line font-display text-5xl font-bold leading-[0.95] tracking-[-0.035em] text-espresso sm:text-6xl lg:text-7xl">
+            <h2 className="mt-3 whitespace-pre-line font-display text-[clamp(2rem,7vw,3.75rem)] font-bold leading-[0.95] tracking-[-0.035em] text-espresso md:text-6xl lg:text-7xl">
               {t.aboutTitle}
             </h2>
-            <p className="mt-6 text-lg leading-relaxed text-espresso/70 sm:text-xl">
+            <p className="mt-6 text-base leading-relaxed text-espresso/70 sm:text-lg md:text-xl">
               {t.aboutText}
             </p>
 

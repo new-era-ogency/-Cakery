@@ -5,7 +5,7 @@ import { PHONE_DISPLAY, PHONE_E164 } from "@/lib/constants";
 export default function ContactSection({ t }: { t: Messages }) {
   return (
     <section id="contact" className="scroll-mt-24 bg-cream/40 py-24 sm:py-32">
-      <div className="mx-auto grid max-w-7xl gap-8 px-5 sm:px-8 md:grid-cols-3 lg:px-12">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 md:grid-cols-3 lg:px-10">
         <div className="reveal rounded-3xl border border-espresso/10 bg-white/80 p-7 shadow-soft backdrop-blur-md">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-caramel">
             · {t.ratingTitle}

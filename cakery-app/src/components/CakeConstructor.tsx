@@ -394,17 +394,17 @@ export default function CakeConstructor({
   return (
     <section
       id="order-section"
-      className="scroll-mt-24 bg-gradient-to-b from-cream/40 via-porcelain to-cream/30 py-24 sm:py-32"
+      className="scroll-mt-24 bg-gradient-to-b from-cream/40 via-porcelain to-cream/30 py-16 sm:py-24 md:py-32"
     >
-      <div className="mx-auto max-w-3xl px-5 sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-10">
         <div className="reveal mb-10 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-caramel">
             · {t.orderCake}
           </p>
-          <h2 className="mt-3 font-display text-5xl font-bold leading-[0.95] tracking-[-0.035em] text-espresso sm:text-6xl">
+          <h2 className="mt-3 font-display text-[clamp(1.75rem,6vw,3.75rem)] font-bold leading-[1.05] tracking-[-0.03em] text-espresso sm:text-5xl md:text-6xl">
             {t.orderHero}
           </h2>
-          <p className="mt-4 text-base text-espresso/65 sm:text-lg">
+          <p className="mt-4 text-sm leading-relaxed text-espresso/65 sm:text-base md:text-lg">
             {t.orderHeroSub}
           </p>
         </div>
@@ -424,10 +424,11 @@ export default function CakeConstructor({
           <form
             noValidate
             onSubmit={handleSubmit(onSubmit)}
-            className="rounded-3xl border border-espresso/10 bg-white/85 p-5 shadow-soft backdrop-blur-md sm:p-8"
+            className="relative rounded-3xl border border-espresso/10 bg-white/85 p-4 shadow-soft backdrop-blur-md sm:p-8"
           >
+            <div className="pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
             <ProgressBar step={step} />
-            <p className="mb-4 text-sm font-medium text-espresso/55">
+            <p className="mb-4 text-xs font-medium text-espresso/55 sm:text-sm">
               {t.stepLabel} {step + 1} {t.of} {TOTAL_STEPS}
             </p>
 
@@ -506,13 +507,16 @@ export default function CakeConstructor({
             {step === 5 && (
               <Step6 t={t} register={register} errors={errors} watch={watch} />
             )}
+            </div>
 
-            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+            <div
+              className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-[38] grid grid-cols-2 gap-3 border-t border-espresso/10 bg-white/[0.97] px-4 py-3 shadow-[0_-8px_32px_-14px_rgba(58,36,24,0.18)] backdrop-blur-md supports-[backdrop-filter]:bg-white/90 md:relative md:inset-x-auto md:bottom-auto md:z-0 md:mt-8 md:flex md:w-full md:grid-cols-none md:flex-row md:justify-between md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none md:backdrop-blur-none"
+            >
               <button
                 type="button"
                 onClick={back}
                 disabled={step === 0 || status === "submitting"}
-                className="inline-flex min-h-[48px] items-center justify-center rounded-full border-2 border-espresso/20 px-6 text-sm font-semibold text-espresso transition hover:border-espresso disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex min-h-[44px] w-full items-center justify-center rounded-full border-2 border-espresso/20 px-4 text-sm font-semibold text-espresso transition hover:border-espresso disabled:cursor-not-allowed disabled:opacity-40 md:w-auto md:min-w-[44px] md:px-6"
               >
                 {t.back}
               </button>
@@ -521,7 +525,7 @@ export default function CakeConstructor({
                 <button
                   type="button"
                   onClick={next}
-                  className="btn-premium inline-flex min-h-[48px] items-center justify-center rounded-full bg-espresso px-8 text-sm font-semibold text-porcelain shadow-lift transition hover:bg-ink"
+                  className="btn-premium inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-espresso px-4 text-sm font-semibold text-porcelain shadow-lift transition hover:bg-ink md:w-auto md:min-w-[44px] md:px-8"
                 >
                   {t.next}
                 </button>
@@ -529,7 +533,7 @@ export default function CakeConstructor({
                 <button
                   type="submit"
                   disabled={status === "submitting"}
-                  className="btn-premium inline-flex min-h-[48px] items-center justify-center rounded-full bg-caramel px-8 text-sm font-semibold text-espresso shadow-lift transition hover:bg-porcelain disabled:cursor-not-allowed disabled:opacity-50"
+                  className="btn-premium inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-caramel px-4 text-sm font-semibold text-espresso shadow-lift transition hover:bg-porcelain disabled:cursor-not-allowed disabled:opacity-50 md:w-auto md:min-w-[44px] md:px-8"
                 >
                   {status === "submitting" ? t.sending : t.submit}
                 </button>

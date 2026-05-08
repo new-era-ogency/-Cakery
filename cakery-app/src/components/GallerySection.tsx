@@ -24,15 +24,15 @@ export default function GallerySection({ t }: { t: Messages }) {
       <div className="pointer-events-none absolute -left-24 top-1/2 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-caramel/15 blur-[140px]" />
       <div className="pointer-events-none absolute -right-24 bottom-1/4 h-[340px] w-[340px] rounded-full bg-chocolate/10 blur-[140px]" />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
         <div className="reveal mb-14 max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-caramel">
             · {t.galleryEyebrow}
           </p>
-          <h2 className="mt-3 whitespace-pre-line font-display text-5xl font-bold leading-[0.95] tracking-[-0.035em] text-espresso sm:text-6xl">
+          <h2 className="mt-3 whitespace-pre-line font-display text-[clamp(2rem,7vw,3.75rem)] font-bold leading-[0.95] tracking-[-0.035em] text-espresso sm:text-5xl md:text-6xl">
             {t.galleryTitle}
           </h2>
-          <p className="mt-4 text-lg leading-relaxed text-espresso/65">
+          <p className="mt-4 text-sm leading-relaxed text-espresso/65 sm:text-lg">
             {t.gallerySub}
           </p>
         </div>

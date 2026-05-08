@@ -38,7 +38,7 @@ export default function Hero({ t }: { t: Messages }) {
       <div className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-caramel/25 blur-[120px]" />
       <div className="pointer-events-none absolute -right-32 bottom-0 h-[480px] w-[480px] rounded-full bg-chocolate/15 blur-[140px]" />
 
-      <div className="relative mx-auto grid max-w-7xl gap-10 px-5 pt-10 sm:px-8 lg:grid-cols-12 lg:gap-12 lg:px-12 lg:pt-16">
+      <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pt-10 sm:px-8 lg:grid-cols-12 lg:gap-12 lg:px-12 lg:pt-16">
         <div className="lg:col-span-7 lg:pt-10">
           <div className="reveal flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-caramel">
             <span className="h-px w-10 bg-caramel/60" />
@@ -47,7 +47,7 @@ export default function Hero({ t }: { t: Messages }) {
 
           <h1
             id="hero-title"
-            className="reveal mt-6 font-display text-[clamp(3rem,9vw,7rem)] font-bold leading-[0.92] tracking-[-0.035em] text-espresso"
+            className="reveal mt-6 font-display text-[clamp(2.125rem,8.5vw,7rem)] font-bold leading-[0.95] tracking-[-0.035em] text-espresso"
           >
             {t.heroH1Line1}
             <br />
@@ -56,14 +56,14 @@ export default function Hero({ t }: { t: Messages }) {
             </span>
           </h1>
 
-          <p className="reveal mt-6 max-w-md text-lg leading-relaxed text-espresso/70 sm:text-xl">
+          <p className="reveal mt-6 max-w-md text-base leading-relaxed text-espresso/70 sm:text-lg md:text-xl">
             {t.heroLede}
           </p>
 
           <div className="reveal mt-9 flex flex-wrap items-center gap-5">
             <MagneticButton
               href="#order-section"
-              className="btn-premium group rounded-full bg-espresso px-10 py-4 text-base font-semibold text-porcelain shadow-lift transition-all duration-500 ease-silk hover:shadow-ring"
+              className="btn-premium group inline-flex min-h-[44px] items-center rounded-full bg-espresso px-8 py-3 text-base font-semibold text-porcelain shadow-lift transition-all duration-500 ease-silk hover:shadow-ring sm:px-10 sm:py-4"
             >
               <span className="inline-flex items-center gap-3 tracking-wide">
                 {t.ctaOrder}
@@ -78,7 +78,7 @@ export default function Hero({ t }: { t: Messages }) {
 
             <a
               href="#menu-section"
-              className="text-sm font-semibold uppercase tracking-[0.2em] text-espresso/70 underline-offset-[6px] hover:text-espresso hover:underline"
+              className="inline-flex min-h-[44px] items-center text-sm font-semibold uppercase tracking-[0.2em] text-espresso/70 underline-offset-[6px] hover:text-espresso hover:underline"
             >
               {t.ctaMenu}
             </a>

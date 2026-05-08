@@ -75,10 +75,10 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 border-b border-espresso/10 bg-porcelain/85 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8 lg:px-12">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 lg:px-12">
         <a
           href="#"
-          className="font-display text-2xl font-semibold tracking-tight text-espresso"
+          className="font-display text-xl font-semibold tracking-tight text-espresso sm:text-2xl"
         >
           Cakery<span className="ml-1 text-caramel">.</span>
         </a>
@@ -110,7 +110,7 @@ export default function Header({
                 key={l}
                 type="button"
                 onClick={() => setLang(l)}
-                className={`min-h-[40px] min-w-[40px] rounded-full px-3 text-xs font-semibold uppercase tracking-widest transition ${
+                className={`min-h-[44px] min-w-[44px] rounded-full px-3 text-xs font-semibold uppercase tracking-widest transition ${
                   lang === l
                     ? "bg-espresso text-porcelain"
                     : "text-espresso/55 hover:text-espresso"

@@ -40,7 +40,7 @@ function Field({
     <div>
       <label
         htmlFor={htmlFor}
-        className="mb-1.5 block text-sm font-semibold text-espresso"
+        className="mb-1.5 block text-xs font-semibold text-espresso sm:text-sm"
       >
         {label}
       </label>
@@ -63,15 +63,15 @@ export function Step1({ t, errors, watch, updateFormData }: StepChoiceProps) {
     <div>
       <h3
         id="step-order-size"
-        className="font-display text-xl font-bold text-espresso"
+        className="font-display text-lg font-bold text-espresso sm:text-xl"
       >
         {t.s1Title}
       </h3>
-      <p className="mt-1 text-sm text-espresso/60">{t.s1Sub}</p>
+      <p className="mt-1 text-xs text-espresso/60 sm:text-sm">{t.s1Sub}</p>
       <div
         role="radiogroup"
         aria-labelledby="step-order-size"
-        className="mt-5 grid gap-3 sm:grid-cols-2"
+        className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2"
       >
         {t.sizeOptions.map((opt) => {
           const selected = sizeValue === opt.id;
@@ -85,7 +85,7 @@ export function Step1({ t, errors, watch, updateFormData }: StepChoiceProps) {
                 if (!opt?.id) return;
                 updateFormData("size", opt.id);
               }}
-              className={`relative flex cursor-pointer flex-col rounded-xl border-2 p-4 text-left transition ${
+              className={`relative flex min-h-[44px] cursor-pointer flex-col justify-center rounded-xl border-2 p-4 text-left transition ${
                 selected
                   ? "border-caramel bg-caramel/10"
                   : "border-espresso/15 hover:border-caramel/60"
@@ -116,14 +116,14 @@ export function Step2({ t, errors, watch, updateFormData }: StepChoiceProps) {
     <div>
       <h3
         id="step-order-flavor"
-        className="font-display text-xl font-bold text-espresso"
+        className="font-display text-lg font-bold text-espresso sm:text-xl"
       >
         {t.s2Title}
       </h3>
       <div
         role="radiogroup"
         aria-labelledby="step-order-flavor"
-        className="mt-5 grid gap-2 sm:grid-cols-2"
+        className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2"
       >
         {t.flavorOptions.map((opt) => {
           const selected = flavorValue === opt.id;
@@ -137,7 +137,7 @@ export function Step2({ t, errors, watch, updateFormData }: StepChoiceProps) {
                 if (!opt?.id) return;
                 updateFormData("flavor", opt.id);
               }}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${
+              className={`flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${
                 selected
                   ? "border-caramel bg-caramel/10"
                   : "border-espresso/15 hover:border-caramel/60"
@@ -169,14 +169,16 @@ export function Step3({ t, register, errors, watch }: StepProps) {
   const value = watch("creams") || [];
   return (
     <div>
-      <h3 className="font-display text-xl font-bold text-espresso">{t.s3Title}</h3>
-      <div className="mt-5 grid gap-2 sm:grid-cols-2">
+      <h3 className="font-display text-lg font-bold text-espresso sm:text-xl">
+        {t.s3Title}
+      </h3>
+      <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {t.creamOptions.map((opt) => {
           const active = value.includes(opt.id);
           return (
             <label
               key={opt.id}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 transition ${
+              className={`flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 transition ${
                 active
                   ? "border-caramel bg-caramel/10"
                   : "border-espresso/15 hover:border-caramel/60"
@@ -186,7 +188,7 @@ export function Step3({ t, register, errors, watch }: StepProps) {
                 type="checkbox"
                 value={opt.id}
                 {...register("creams")}
-                className="h-4 w-4 accent-espresso"
+                className="h-5 w-5 shrink-0 accent-espresso"
               />
               <span className="text-sm font-medium text-espresso">
                 {opt.label}
@@ -220,7 +222,7 @@ export function Step4({
   const decor = watch("decor") || "";
   return (
     <div className="space-y-5">
-      <h3 className="font-display text-xl font-bold text-espresso">{t.s4Title}</h3>
+      <h3 className="font-display text-lg font-bold text-espresso sm:text-xl">{t.s4Title}</h3>
       <Field
         label={t.s4Decor}
         htmlFor="decor"
@@ -232,13 +234,13 @@ export function Step4({
           rows={4}
           maxLength={LIMITS.decor}
           {...register("decor")}
-          className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-sm text-espresso outline-none transition focus:border-caramel"
+          className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-base text-espresso outline-none transition focus:border-caramel"
         />
       </Field>
       <Field label={t.s4Photo} htmlFor="photo" error={fileError}>
         <label
           htmlFor="photo"
-          className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-espresso/25 bg-cream/40 px-4 py-4 text-sm text-espresso/70 transition hover:border-caramel hover:bg-caramel/10"
+          className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-espresso/25 bg-cream/40 px-4 py-3 text-sm text-espresso/70 transition hover:border-caramel hover:bg-caramel/10"
         >
           <Upload className="h-5 w-5 shrink-0" />
           <span className="truncate">{file ? file.name : t.s4Hint}</span>
@@ -263,7 +265,7 @@ export function Step5({
 }: StepProps & { minDate: string }) {
   return (
     <div className="space-y-5">
-      <h3 className="font-display text-xl font-bold text-espresso">{t.s5Title}</h3>
+      <h3 className="font-display text-lg font-bold text-espresso sm:text-xl">{t.s5Title}</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label={t.s5Date}
@@ -275,7 +277,7 @@ export function Step5({
             type="date"
             min={minDate}
             {...register("date")}
-            className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-sm text-espresso outline-none transition focus:border-caramel"
+            className="w-full min-h-[44px] rounded-xl border-2 border-espresso/15 bg-white px-4 py-[0.6875rem] text-base leading-normal text-espresso outline-none transition focus:border-caramel"
           />
         </Field>
         <Field
@@ -287,7 +289,7 @@ export function Step5({
             id="time"
             type="time"
             {...register("time")}
-            className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-sm text-espresso outline-none transition focus:border-caramel"
+            className="w-full min-h-[44px] rounded-xl border-2 border-espresso/15 bg-white px-4 py-[0.6875rem] text-base leading-normal text-espresso outline-none transition focus:border-caramel"
           />
         </Field>
       </div>
@@ -299,7 +301,7 @@ export function Step6({ t, register, errors, watch }: StepProps) {
   const notes = watch("notes") || "";
   return (
     <div className="space-y-4">
-      <h3 className="font-display text-xl font-bold text-espresso">{t.s6Title}</h3>
+      <h3 className="font-display text-lg font-bold text-espresso sm:text-xl">{t.s6Title}</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label={t.s6Name}
@@ -312,7 +314,7 @@ export function Step6({ t, register, errors, watch }: StepProps) {
             autoComplete="name"
             maxLength={LIMITS.name}
             {...register("name")}
-            className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-sm text-espresso outline-none transition focus:border-caramel"
+            className="w-full min-h-[44px] rounded-xl border-2 border-espresso/15 bg-white px-4 py-[0.6875rem] text-base leading-normal text-espresso outline-none transition focus:border-caramel"
           />
         </Field>
         <Field
@@ -327,7 +329,7 @@ export function Step6({ t, register, errors, watch }: StepProps) {
             maxLength={LIMITS.phone}
             placeholder="+359 88 884 9908"
             {...register("phone")}
-            className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-sm text-espresso outline-none transition focus:border-caramel"
+            className="w-full min-h-[44px] rounded-xl border-2 border-espresso/15 bg-white px-4 py-[0.6875rem] text-base leading-normal text-espresso outline-none transition focus:border-caramel"
           />
         </Field>
       </div>
@@ -342,7 +344,7 @@ export function Step6({ t, register, errors, watch }: StepProps) {
           autoComplete="email"
           maxLength={LIMITS.email}
           {...register("email")}
-          className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-sm text-espresso outline-none transition focus:border-caramel"
+          className="w-full min-h-[44px] rounded-xl border-2 border-espresso/15 bg-white px-4 py-[0.6875rem] text-base leading-normal text-espresso outline-none transition focus:border-caramel"
         />
       </Field>
       <Field
@@ -356,18 +358,18 @@ export function Step6({ t, register, errors, watch }: StepProps) {
           rows={3}
           maxLength={LIMITS.notes}
           {...register("notes")}
-          className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-sm text-espresso outline-none transition focus:border-caramel"
+          className="w-full rounded-xl border-2 border-espresso/15 bg-white px-4 py-3 text-base text-espresso outline-none transition focus:border-caramel"
         />
       </Field>
 
       <div className="rounded-xl border border-espresso/15 bg-cream/30 p-3">
-        <label className="flex cursor-pointer items-start gap-3">
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-3 py-1">
           <input
             type="checkbox"
             {...register("gdpr")}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-espresso"
+            className="h-5 w-5 shrink-0 accent-espresso"
           />
-          <span className="text-xs leading-relaxed text-espresso/85">
+          <span className="text-xs leading-relaxed text-espresso/85 sm:text-[13px]">
             {t.s6Gdpr}{" "}
             <a
               href="#privacy"
