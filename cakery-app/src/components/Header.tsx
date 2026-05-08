@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { Menu as MenuIcon, X } from "lucide-react";
 import type { Lang, Messages } from "@/lib/i18n";
-import { PHONE_DISPLAY, PHONE_E164 } from "@/lib/constants";
 
 type Props = {
   lang: Lang;
@@ -20,6 +19,7 @@ export default function Header({
 }: Props) {
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
 
   const links = [
     { href: "#menu-section", label: t.navMenu },
@@ -43,7 +43,9 @@ export default function Header({
     };
     document.addEventListener("keydown", onKey);
     requestAnimationFrame(() => {
-      panelRef.current?.querySelector<HTMLElement>("a[href], button")?.focus();
+      panelRef.current
+        ?.querySelector<HTMLElement>('nav[aria-label="Mobile"] a')
+        ?.focus();
     });
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -51,30 +53,34 @@ export default function Header({
     };
   }, [mobileOpen, setMobileOpen]);
 
-  const trapFocus = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const nodes = panelRef.current.querySelectorAll<HTMLElement>(
-        'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"])',
-      );
-      if (!nodes.length) return;
-      const list = Array.from(nodes);
-      const first = list[0];
-      const last = list[list.length - 1];
-      if (!first || !last) return;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    },
-    [],
-  );
+  const trapFocus = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab" || !panelRef.current || !barRef.current) return;
+    const barEls = barRef.current.querySelectorAll<HTMLElement>(
+      'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"])',
+    );
+    const panelEls = panelRef.current.querySelectorAll<HTMLElement>(
+      'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"])',
+    );
+    const list = [...Array.from(barEls), ...Array.from(panelEls)];
+    if (!list.length) return;
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (!first || !last) return;
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-espresso/10 bg-porcelain/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-[60]">
+      <div
+        ref={barRef}
+        className="relative z-[70] border-b border-espresso/10 bg-porcelain/95 backdrop-blur-xl"
+      >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 lg:px-12">
         <a
           href="#"
@@ -131,28 +137,23 @@ export default function Header({
           <button
             ref={menuBtnRef}
             type="button"
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-espresso/15 bg-white/80 text-espresso md:hidden"
-            onClick={() => setMobileOpen(true)}
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-espresso/15 bg-white/80 text-espresso transition-colors md:hidden"
+            onClick={() => setMobileOpen(!mobileOpen)}
             aria-expanded={mobileOpen}
             aria-controls="mobile-nav-panel"
-            aria-label={t.menuAria}
+            aria-label={mobileOpen ? t.closeMenuAria : t.menuAria}
           >
-            <MenuIcon className="h-6 w-6" />
+            {mobileOpen ? (
+              <X className="h-6 w-6" aria-hidden />
+            ) : (
+              <MenuIcon className="h-6 w-6" aria-hidden />
+            )}
           </button>
         </div>
       </div>
+      </div>
 
       {mobileOpen ? (
-        <div
-          id="mobile-nav"
-          className="fixed inset-0 z-50 md:hidden"
-          role="presentation"
-        >
-          <div
-            className="pop-in absolute inset-0 bg-ink/60 backdrop-blur-md"
-            onClick={() => setMobileOpen(false)}
-            aria-hidden="true"
-          />
           <div
             ref={panelRef}
             id="mobile-nav-panel"
@@ -161,58 +162,35 @@ export default function Header({
             aria-label="Navigation"
             tabIndex={-1}
             onKeyDown={trapFocus}
-            className="pop-in absolute right-0 top-0 flex h-full w-[min(100%,340px)] flex-col bg-espresso text-porcelain shadow-2xl outline-none"
+            className="pop-in fixed inset-x-0 bottom-0 top-14 z-50 flex flex-col overflow-y-auto bg-porcelain md:hidden sm:top-16"
           >
-            <div className="flex items-center justify-between border-b border-porcelain/10 px-5 py-4">
-              <span className="font-display text-xl font-semibold">
-                Cakery<span className="text-caramel">.</span>
-              </span>
-              <button
-                type="button"
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-porcelain/10 text-porcelain hover:bg-porcelain/20"
-                onClick={() => setMobileOpen(false)}
-                aria-label={t.closeMenuAria}
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
             <nav
-              className="flex flex-1 flex-col gap-1 px-5 pt-6"
+              className="flex flex-1 flex-col items-center justify-center px-6 py-10"
               aria-label="Mobile"
             >
-              {links.map((l, i) => (
+              <div className="flex w-full max-w-sm flex-col items-center space-y-8">
+                {links.map((l) => (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    className="block w-full py-3 text-center font-display text-2xl font-semibold text-espresso transition duration-300 ease-out hover:text-caramel sm:text-3xl"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {l.label}
+                  </a>
+                ))}
+              </div>
+              <div className="mt-10 w-full max-w-sm shrink-0 border-t border-espresso/10 pt-10">
                 <a
-                  key={l.href}
-                  href={l.href}
-                  className="border-b border-porcelain/5 py-4 font-display text-2xl font-semibold text-porcelain transition hover:translate-x-1 hover:text-caramel"
+                  href="#order-section"
+                  className="btn-premium flex min-h-[52px] w-full items-center justify-center rounded-full bg-espresso px-6 text-base font-semibold text-porcelain shadow-lift transition hover:bg-ink"
                   onClick={() => setMobileOpen(false)}
-                  style={{ transitionDelay: `${i * 30}ms` }}
                 >
-                  {l.label}
+                  {t.orderCake}
                 </a>
-              ))}
-              <a
-                href="#order-section"
-                className="mt-8 inline-flex min-h-[52px] items-center justify-center rounded-full bg-caramel px-6 text-base font-semibold text-espresso shadow-lift hover:bg-porcelain"
-                onClick={() => setMobileOpen(false)}
-              >
-                {t.orderCake} →
-              </a>
+              </div>
             </nav>
-            <div className="border-t border-porcelain/10 p-5 text-xs text-porcelain/60">
-              <p className="font-semibold uppercase tracking-widest text-porcelain/80">
-                {t.navContact}
-              </p>
-              <p className="mt-2">{t.footerAddr}</p>
-              <a
-                href={`tel:${PHONE_E164}`}
-                className="mt-2 inline-block font-semibold text-porcelain hover:text-caramel"
-              >
-                {PHONE_DISPLAY}
-              </a>
-            </div>
           </div>
-        </div>
       ) : null}
     </header>
   );
